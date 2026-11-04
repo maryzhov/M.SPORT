@@ -692,21 +692,47 @@ function foodHomeCard(big){ const fd=fday(TODAY), t=sumN(fd.items), G=S.food.goa
 
 /* ================= MUSIC ================= */
 let AUDIO=null;
+const CAN_STREAM = !!window.M_STANDALONE;
+const RADIO=[
+  {id:"r101hh",n:"Gangsta & Hip-Hop",src:"101.ru",urls:["https://pub0302.101.ru:8443/stream/trust/mp3/128/8","https://pub0301.101.ru:8443/stream/trust/mp3/128/8"],site:"https://101.ru/radio/channel/8"},
+  {id:"rrec",n:"Record",src:"Радио Record",urls:["https://radiorecord.hostingradio.ru/rr_main96.aacp"],site:"https://www.radiorecord.ru"},
+  {id:"rdfm",n:"DFM",src:"DFM",urls:["https://dfm.hostingradio.ru/dfm96.aacp"],site:"https://dfm.ru"},
+  {id:"rep",n:"Европа Плюс",src:"Европа Плюс",urls:["https://ep256.hostingradio.ru:8052/europaplus256.mp3"],site:"https://europaplus.ru"}
+];
+const stations = () => RADIO.concat((S.music&&S.music.stations)||[]);
+const MUS = { cur:null, kind:"", status:{} }; // kind: radio|track
+function ensureAudio(){ if(AUDIO) return AUDIO; AUDIO=new Audio(); AUDIO.preload="none";
+  AUDIO.addEventListener("ended",()=>{ if(MUS.kind==="track") playTrack(UI.ti+1); });
+  AUDIO.addEventListener("playing",()=>{ UI.playing=true; if(MUS.kind==="radio"&&MUS.cur) MUS.status[MUS.cur.id]="ok"; render(); });
+  AUDIO.addEventListener("pause",()=>{ UI.playing=false; render(); });
+  AUDIO.addEventListener("error",()=>{ if(MUS.kind!=="radio"||!MUS.cur) return; MUS.ui=(MUS.ui||0)+1; const u=MUS.cur.urls[MUS.ui];
+    if(u){ AUDIO.src=u; AUDIO.play().catch(()=>{}); } else { MUS.status[MUS.cur.id]="fail"; UI.playing=false; toast("«"+MUS.cur.n+"» сейчас не играет — попробуй другую станцию"); render(); } });
+  return AUDIO; }
+function playRadio(st){ const a=ensureAudio(); MUS.cur=st; MUS.kind="radio"; MUS.ui=0; MUS.status[st.id]="load"; a.src=st.urls[0]; a.play().catch(()=>{}); render(); }
+function stopAudio(){ if(AUDIO){ AUDIO.pause(); } UI.playing=false; render(); }
 function player(){
-  const tr=UI.tracks[UI.ti];
-  return `<div class="card player row"><button class="cover" data-act="push" data-v="music" aria-label="Музыка">${tr?ic("music"):"101"}</button><button class="grow" style="text-align:left;min-width:0" data-act="push" data-v="music"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tr?esc(tr.name):"Музыка для тренировки"}</b><div class="small muted">${tr?"Мои треки · "+(UI.ti+1)+" из "+UI.tracks.length:"Радио 101.ru, Яндекс Музыка, свои треки"}</div></button><span class="eq ${UI.playing?"on":""}"><i></i><i></i><i></i></span><button class="pp ${UI.playing?"on":""}" data-act="play" aria-label="${UI.playing?"Пауза":"Играть"}">${ic(UI.playing?"pause":"play")}</button></div>`; }
-function playTrack(i){ if(!UI.tracks.length) return; UI.ti=(i+UI.tracks.length)%UI.tracks.length; if(!AUDIO){ AUDIO=new Audio(); AUDIO.addEventListener("ended",()=>playTrack(UI.ti+1)); }
-  AUDIO.src=UI.tracks[UI.ti].url; AUDIO.play().then(()=>{ UI.playing=true; render(); },()=>{ UI.playing=false; toast("Не получилось воспроизвести файл"); render(); }); }
+  const tr=UI.tracks[UI.ti], radio=MUS.kind==="radio"&&MUS.cur, loading=radio&&MUS.status[MUS.cur.id]==="load";
+  const title = radio ? MUS.cur.n : tr&&MUS.kind==="track" ? tr.name : "Музыка для тренировки";
+  const sub = radio ? (loading?"Подключаюсь…":MUS.cur.src+" · радио") : tr&&MUS.kind==="track" ? "Мои треки · "+(UI.ti+1)+" из "+UI.tracks.length : CAN_STREAM?"Радио и свои треки":"Радио 101.ru, Яндекс Музыка, свои треки";
+  return `<div class="card player row"><button class="cover" data-act="push" data-v="music" aria-label="Музыка">${radio?ic("music"):"101"}</button><button class="grow" style="text-align:left;min-width:0" data-act="push" data-v="music"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title)}</b><div class="small muted">${esc(sub)}</div></button><span class="eq ${UI.playing?"on":""}"><i></i><i></i><i></i></span><button class="pp ${UI.playing?"on":""}" data-act="play" aria-label="${UI.playing?"Пауза":"Играть"}">${loading?'<span class="spin"></span>':ic(UI.playing?"pause":"play")}</button></div>`; }
+function playTrack(i){ if(!UI.tracks.length) return; const a=ensureAudio(); UI.ti=(i+UI.tracks.length)%UI.tracks.length; MUS.kind="track"; MUS.cur=null;
+  a.src=UI.tracks[UI.ti].url; a.play().catch(()=>{ UI.playing=false; toast("Не получилось воспроизвести файл"); render(); }); }
 function vMusic(){
-  const st=[["Хип-хоп","https://101.ru/radio-top/hip-hop"],["Все станции 101.ru","https://101.ru"],["Яндекс Музыка — плейлисты для бега","https://music.yandex.ru/search?text=%D0%B1%D0%B5%D0%B3"],["Яндекс Музыка — Моя волна","https://music.yandex.ru"]];
+  const links=[["101.ru — все станции","https://101.ru"],["Яндекс Музыка — плейлисты для бега","https://music.yandex.ru/search?text=%D0%B1%D0%B5%D0%B3"],["Яндекс Музыка — Моя волна","https://music.yandex.ru"]];
+  const stRow = st => { const on=MUS.kind==="radio"&&MUS.cur&&MUS.cur.id===st.id, stt=MUS.status[st.id];
+    return `<div class="li"><button class="row grow" style="text-align:left;gap:12px" data-act="radio" data-id="${esc(st.id)}"><span class="tile-ic" style="${on?"":"background:var(--surface2);color:var(--muted)"}">${stt==="load"&&on?'<span class="spin"></span>':ic(on&&UI.playing?"pause":"play")}</span><span class="grow" style="min-width:0"><b style="font-weight:600;display:block">${esc(st.n)}</b><span class="small ${stt==="fail"?"":"muted"}" style="${stt==="fail"?"color:var(--bad)":""}">${stt==="fail"?"Сейчас не играет":stt==="ok"?"Играет":esc(st.src)}</span></span></button>${st.mine?`<button class="iconbtn sm" style="color:var(--muted)" data-act="delStation" data-id="${esc(st.id)}" aria-label="Удалить станцию">${ic("trash")}</button>`:st.site?`<a class="iconbtn sm" href="${st.site}" target="_blank" rel="noopener" aria-label="Сайт станции" style="color:var(--muted)">${ic("chev")}</a>`:""}</div>`; };
   return `${ovHead("Музыка")}
+  ${CAN_STREAM?`<div class="card"><h2 style="margin-bottom:6px">Радио</h2><div class="list">${stations().map(stRow).join("")}</div>
+    ${UI.playing&&MUS.kind==="radio"?`<button class="btn sec sm" style="margin-top:10px" data-act="stopAudio">${ic("stop")}Остановить</button>`:""}
+    <details style="margin-top:10px"><summary class="small" style="color:var(--accent);cursor:pointer">+ Добавить свою станцию по ссылке на поток</summary><div class="col" style="margin-top:10px;gap:8px"><input class="inp" id="st-n" placeholder="Название, например «Мой рэп»"><input class="inp" id="st-u" inputmode="url" autocapitalize="off" placeholder="https://…/stream.mp3"><button class="btn sec sm" data-act="addStation">Добавить</button></div></details>
+    <div class="small muted" style="margin-top:8px">Играет, пока открыт сайт. При блокировке экрана iPhone звук обычно продолжается.</div></div>`:""}
   <div class="card"><h2 style="margin-bottom:6px">Мои треки</h2>
-    ${UI.tracks.length?`<div class="list">${UI.tracks.map((t,i)=>`<button class="li" style="width:100%;text-align:left" data-act="playI" data-i="${i}"><span class="tile-ic" style="${i===UI.ti?"":"background:var(--surface2);color:var(--muted)"}">${ic(i===UI.ti&&UI.playing?"pause":"music")}</span><span class="grow" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.name)}</span></button>`).join("")}</div>
-    <div class="row" style="justify-content:center;gap:22px;margin-top:12px"><button class="iconbtn" data-act="prevT" aria-label="Предыдущий">${ic("prev")}</button><button class="pp ${UI.playing?"on":""}" style="width:56px;height:56px;border-radius:50%;border:1.5px solid var(--accent);display:grid;place-items:center;color:${UI.playing?"var(--accent-ink)":"var(--accent)"};background:${UI.playing?"var(--accent)":"none"}" data-act="play" aria-label="Играть или пауза">${ic(UI.playing?"pause":"play")}</button><button class="iconbtn" data-act="nextT" aria-label="Следующий">${ic("next")}</button></div>`
+    ${UI.tracks.length?`<div class="list">${UI.tracks.map((t,i)=>`<button class="li" style="width:100%;text-align:left" data-act="playI" data-i="${i}"><span class="tile-ic" style="${i===UI.ti&&MUS.kind==="track"?"":"background:var(--surface2);color:var(--muted)"}">${ic(i===UI.ti&&MUS.kind==="track"&&UI.playing?"pause":"music")}</span><span class="grow" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.name)}</span></button>`).join("")}</div>
+    <div class="row" style="justify-content:center;gap:22px;margin-top:12px"><button class="iconbtn" data-act="prevT" aria-label="Предыдущий">${ic("prev")}</button><button class="iconbtn" data-act="play" aria-label="Играть или пауза">${ic(UI.playing?"pause":"play")}</button><button class="iconbtn" data-act="nextT" aria-label="Следующий">${ic("next")}</button></div>`
     :`<p class="small muted" style="margin:0 0 10px">Выбери аудиофайлы с телефона или компьютера — они будут играть здесь, пока страница открыта.</p>`}
     <label class="btn sec" for="tracks" style="margin-top:12px;cursor:pointer">${ic("upload")}Добавить треки</label><input type="file" id="tracks" accept="audio/*" multiple hidden></div>
-  <div class="card"><h2 style="margin-bottom:6px">Радио и стриминг</h2><div class="list">${st.map(([n,u])=>`<a class="li" href="${u}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="tile-ic">${ic("music")}</span><span class="grow">${n}</span><span class="chev">${ic("chev")}</span></a>`).join("")}</div>
-  <div class="small muted" style="margin-top:8px">Откроется в новой вкладке или в приложении. Встроенное радио и Яндекс Музыка — в мобильном приложении.</div></div>`; }
+  <div class="card"><h2 style="margin-bottom:6px">${CAN_STREAM?"Другие сервисы":"Радио и стриминг"}</h2><div class="list">${links.map(([n,u])=>`<a class="li" href="${u}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="tile-ic">${ic("music")}</span><span class="grow">${n}</span><span class="chev">${ic("chev")}</span></a>`).join("")}</div>
+  <div class="small muted" style="margin-top:8px">Откроется в новой вкладке или в приложении${CAN_STREAM?"":". Встроенное радио работает в веб-версии M.SPORT на сайте"}.</div></div>`; }
 
 /* ================= TRAININGS ================= */
 function vTrain(){
@@ -1205,7 +1231,11 @@ async function onAct(el,e){
       try{ const r=await aiJSON('На изображении — экран спортивного трекера, часов или карта тренировки. Извлеки данные тренировки. Верни только JSON {"km": число или null, "time": "ч:мм:сс" или "мм:сс" или null, "hr": средний пульс числом или null, "kcal": число или null}. Ничего не выдумывай: если значения нет на экране — null.',blobs,"default");
         if(r&&typeof r==="object"){ if(r.km!=null) w.fact.km=String(r.km); if(r.time) w.fact.time=String(r.time); if(r.hr!=null) w.fact.hr=String(r.hr); if(r.kcal!=null) w.fact.kcal=String(r.kcal); save(); }
         aiBusy(false); toast("Готово — проверь цифры"); }catch(err){ aiFail(err); } break; }
-    case "play": { if(!UI.tracks.length){ pushOv({v:"music"}); break; } if(UI.playing&&AUDIO){ AUDIO.pause(); UI.playing=false; render(); } else if(AUDIO&&AUDIO.src){ AUDIO.play().then(()=>{UI.playing=true;render();},()=>{}); } else playTrack(0); break; }
+    case "play": { const a=AUDIO; if(UI.playing&&a){ a.pause(); break; } if(MUS.kind==="radio"&&MUS.cur){ playRadio(MUS.cur); break; } if(MUS.kind==="track"&&a&&a.src){ a.play().catch(()=>{}); break; } if(CAN_STREAM){ playRadio(stations()[0]); break; } if(UI.tracks.length){ playTrack(0); break; } pushOv({v:"music"}); break; }
+    case "radio": { const st=stations().find(x=>x.id===d.id); if(!st) break; if(MUS.kind==="radio"&&MUS.cur&&MUS.cur.id===st.id&&UI.playing){ AUDIO.pause(); break; } playRadio(st); break; }
+    case "stopAudio": stopAudio(); break;
+    case "addStation": { const n=($("#st-n").value||"").trim(), u=($("#st-u").value||"").trim(); if(!/^https:\/\//.test(u)){ toast("Нужна ссылка на поток, начинается с https://"); break; } S.music=S.music||{}; S.music.stations=S.music.stations||[]; const st={id:"my"+nid(),n:n||"Моя станция",src:"Своя станция",urls:[u],mine:true}; S.music.stations.push(st); save(); playRadio(st); toast("Станция добавлена"); break; }
+    case "delStation": { S.music.stations=(S.music.stations||[]).filter(x=>x.id!==d.id); if(MUS.cur&&MUS.cur.id===d.id) stopAudio(); save(); render(); break; }
     case "playI": playTrack(+d.i); break;
     case "nextT": playTrack(UI.ti+1); break;
     case "prevT": playTrack(UI.ti-1); break;
