@@ -848,6 +848,11 @@ function player(){
   return `<div class="card player row"><button class="cover" data-act="push" data-v="music" aria-label="Музыка">${radio?ic("music"):"101"}</button><button class="grow" style="text-align:left;min-width:0" data-act="push" data-v="music"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title)}</b><div class="small muted">${esc(sub)}</div></button><span class="eq ${UI.playing?"on":""}"><i></i><i></i><i></i></span><button class="pp ${UI.playing?"on":""}" data-act="play" aria-label="${UI.playing?"Пауза":"Играть"}">${loading?'<span class="spin"></span>':ic(UI.playing?"pause":"play")}</button></div>`; }
 function playTrack(i){ if(!UI.tracks.length) return; const a=ensureAudio(); UI.ti=(i+UI.tracks.length)%UI.tracks.length; MUS.kind="track"; MUS.cur=null;
   a.src=UI.tracks[UI.ti].url; a.play().catch(()=>{ UI.playing=false; toast("Не получилось воспроизвести файл"); render(); }); }
+const TRDB=()=>new Promise((res,rej)=>{ try{ const r=indexedDB.open("msport-tracks",1); r.onupgradeneeded=()=>r.result.createObjectStore("t",{keyPath:"id"}); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } });
+async function trPut(id,name,blob){ try{ const db=await TRDB(); await new Promise((res,rej)=>{ const x=db.transaction("t","readwrite"); x.objectStore("t").put({id,name,blob,at:Date.now()}); x.oncomplete=res; x.onerror=()=>rej(x.error); x.onabort=()=>rej(x.error); }); return true; }catch(e){ return false; } }
+async function trDel(id){ try{ const db=await TRDB(); db.transaction("t","readwrite").objectStore("t").delete(id); }catch(e){} }
+async function trLoad(){ try{ const db=await TRDB(); const all=await new Promise((res,rej)=>{ const q=db.transaction("t").objectStore("t").getAll(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); }); all.sort((a,b)=>a.at-b.at); UI.tracks=all.map(x=>({id:x.id,name:x.name,url:URL.createObjectURL(x.blob)})); try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){} }catch(e){} }
+trLoad();
 function ymEmbed(u){ u=String(u||"").trim(); let m;
   if((m=u.match(/music\.yandex\.(?:ru|com|by|kz)\/users\/([^/?#]+)\/playlists\/(\d+)/))) return "https://music.yandex.ru/iframe/playlist/"+m[1]+"/"+m[2];
   if((m=u.match(/music\.yandex\.(?:ru|com|by|kz)\/album\/(\d+)\/track\/(\d+)/))) return "https://music.yandex.ru/iframe/album/"+m[1]+"/track/"+m[2];
@@ -876,11 +881,11 @@ function vMusic(){
   <div class="col" style="gap:10px"><h2>Каталог радио</h2><div class="st-tabs">${RADIO_CAT.map(([x])=>`<button class="chip xs ${g===x?"on":""}" data-act="rg" data-g="${esc(x)}">${esc(x)}</button>`).join("")}</div>
     <div class="card" style="padding:4px 14px"><div class="list">${RADIO.filter(x=>x.g===g).map(stLine).join("")}</div></div>
     <details><summary class="small" style="color:var(--accent);cursor:pointer">+ Своя станция по ссылке на поток</summary><div class="col" style="margin-top:10px;gap:8px"><input class="inp" id="st-n" placeholder="Название, например «Мой рэп»"><input class="inp" id="st-u" inputmode="url" autocapitalize="off" placeholder="https://…/stream.mp3"><button class="btn sec sm" data-act="addStation">Добавить</button></div></details></div>
-  ${ymCard()}`:`<div class="note">Радио и Яндекс Музыка играют в веб-версии M.SPORT на сайте.</div>`}
+  `:`<div class="note">Радио играет в веб-версии M.SPORT на сайте.</div>`}
   <div class="card"><h2 style="margin-bottom:6px">Мои треки</h2>
-    ${UI.tracks.length?`<div class="list">${UI.tracks.map((t,i)=>`<button class="li" style="width:100%;text-align:left" data-act="playI" data-i="${i}"><span class="tile-ic" style="${i===UI.ti&&MUS.kind==="track"?"":"background:var(--surface2);color:var(--muted)"}">${ic(i===UI.ti&&MUS.kind==="track"&&UI.playing?"pause":"music")}</span><span class="grow" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.name)}</span></button>`).join("")}</div>
+    ${UI.tracks.length?`<div class="list">${UI.tracks.map((t,i)=>`<button class="li" style="width:100%;text-align:left" data-act="playI" data-i="${i}"><span class="tile-ic" style="${i===UI.ti&&MUS.kind==="track"?"":"background:var(--surface2);color:var(--muted)"}">${ic(i===UI.ti&&MUS.kind==="track"&&UI.playing?"pause":"music")}</span><span class="grow" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.name)}</span><span role="button" tabindex="0" class="muted" style="padding:4px 2px 4px 10px" data-act="delT" data-i="${i}" aria-label="Удалить трек">${ic("trash")}</span></button>`).join("")}</div>
     <div class="row" style="justify-content:center;gap:22px;margin-top:12px"><button class="iconbtn" data-act="prevT" aria-label="Предыдущий">${ic("prev")}</button><button class="iconbtn" data-act="play" aria-label="Играть или пауза">${ic(UI.playing?"pause":"play")}</button><button class="iconbtn" data-act="nextT" aria-label="Следующий">${ic("next")}</button></div>`
-    :`<p class="small muted" style="margin:0 0 10px">Выбери аудиофайлы с телефона или компьютера — они будут играть здесь, пока страница открыта.</p>`}
+    :`<p class="small muted" style="margin:0 0 10px">Загрузи аудиофайлы (mp3, m4a) с телефона или компьютера. Они сохранятся на этом устройстве и будут играть по кругу, следующий включается сам.</p>`}
     <label class="btn sec" for="tracks" style="margin-top:12px;cursor:pointer">${ic("upload")}Добавить треки</label><input type="file" id="tracks" accept="audio/*" multiple hidden></div>`; }
 
 /* ================= TRAININGS ================= */
@@ -1498,6 +1503,7 @@ async function onAct(el,e){
     case "ymDel": S.music.ym=(S.music.ym||[]).filter(x=>x.id!==d.id); if(UI.ymOpen===d.id) UI.ymOpen=null; save(); renderOv(); break;
     case "addStation": { const n=($("#st-n").value||"").trim(), u=($("#st-u").value||"").trim(); if(!/^https:\/\//.test(u)){ toast("Нужна ссылка на поток, начинается с https://"); break; } S.music=S.music||{}; S.music.stations=S.music.stations||[]; const st={id:"my"+nid(),n:n||"Моя станция",src:"Своя станция",urls:[u],mine:true}; S.music.stations.push(st); save(); playRadio(st); toast("Станция добавлена"); break; }
     case "delStation": { S.music.stations=(S.music.stations||[]).filter(x=>x.id!==d.id); if(MUS.cur&&MUS.cur.id===d.id) stopAudio(); save(); render(); break; }
+    case "delT": { e.stopPropagation&&e.stopPropagation(); const i=+d.i, tr=UI.tracks[i]; if(!tr) break; if(MUS.kind==="track"&&UI.ti===i&&AUDIO){ AUDIO.pause(); UI.playing=false; } UI.tracks.splice(i,1); if(UI.ti>=i) UI.ti--; trDel(tr.id); renderOv(); break; }
     case "playI": playTrack(+d.i); break;
     case "nextT": playTrack(UI.ti+1); break;
     case "prevT": playTrack(UI.ti-1); break;
@@ -1600,7 +1606,7 @@ document.addEventListener("change",async e=>{
   if(t.id==="foodPhoto"&&t.files[0]){ const top=topS(); toast("Загружаю…"); try{ const ref=await storeImage(t.files[0]); const day=fdayW(UI.foodDay); day.photos=day.photos||{}; day.photos[top.meal]=ref; save(); UI.textRes=null; render(); toast("Фото добавлено в «"+mealName(top.meal)+"»"); }catch(err){ toast("Не получилось сохранить фото"); } return; }
   if(t.id==="planImg"&&t.files.length){ UI.plan.txt=$("#planTxt").value; UI.plan.files=[]; for(const f of [...t.files].slice(0,CAP.imgMax)){ try{ UI.plan.files.push(await resizeToBlob(f,1600)); }catch(err){} } renderOv(); toast("Прикреплено: "+UI.plan.files.length); return; }
   if(t.id==="planFrom"){ UI.plan.from=t.value; return; }
-  if(t.id==="tracks"&&t.files.length){ [...t.files].forEach(f=>UI.tracks.push({name:f.name.replace(/\.[^.]+$/,""),url:URL.createObjectURL(f)})); renderOv(); toast("Добавлено треков: "+t.files.length); return; }
+  if(t.id==="tracks"&&t.files.length){ const fs=[...t.files]; let ok=0; for(const f of fs){ const tr={id:"t"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:f.name.replace(/\.[^.]+$/,""),url:URL.createObjectURL(f)}; UI.tracks.push(tr); if(await trPut(tr.id,tr.name,f)) ok++; } renderOv(); toast(ok===fs.length?"Добавлено треков: "+fs.length:"Добавлено "+fs.length+", но сохранить на устройстве удалось "+ok+": мало места"); t.value=""; return; }
   if(t.id==="impFile"&&t.files[0]){ try{ const data=JSON.parse(await t.files[0].text()); if(!data||!Array.isArray(data.workouts)) throw 0; S=migrate(data); save(); render(); toast("Данные загружены"); }catch(err){ toast("Это не файл экспорта приложения"); } return; }
   if(t.id==="gpx"&&t.files[0]){ try{ const x=new DOMParser().parseFromString(await t.files[0].text(),"application/xml"), pts=[...x.getElementsByTagName("trkpt")];
       if(pts.length<2) throw 0; let dist=0; const R=6371, rad=v=>v*Math.PI/180;
