@@ -597,7 +597,7 @@ function vLogin(){ const reg=AUTH.tab==="register";
     <button class="btn pri" type="submit" ${AUTH.busy?"disabled":""}>${AUTH.busy?'<span class="spin" style="border-color:var(--accent-ink);border-right-color:transparent"></span>':""}${reg?"Создать аккаунт":"Войти"}</button>
     ${reg?"":`<button class="small" type="button" style="color:var(--accent);padding:6px 0" data-act="authReset">Забыли пароль?</button>`}
   </form>
-  <div class="small muted" style="text-align:center;line-height:1.5">Тренировки, цели, питание и вес — в одном месте.<br>У каждого свой личный кабинет. Данные видишь только ты.</div></div></main>`; }
+  <div class="small muted" style="text-align:center;line-height:1.5">Тренировки, цели, питание, вес, музыка — в одном месте.</div><div style="text-align:center;font-weight:600;color:var(--fg);margin-top:2px">Верь в себя сам! <span style="color:var(--logo-red)">●</span></div></div></main>`; }
 async function initCaps(){
   if(FB_MODE){ initFirebase(); return; }
   if(!window.claude||typeof claude.use!=="function") return;
