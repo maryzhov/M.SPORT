@@ -113,6 +113,10 @@ svg.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;str
 .auth-top h1{color:#fff;font-size:26px;letter-spacing:.06em}
 .auth-top p{margin:0;opacity:.92;text-align:center;max-width:300px}
 .auth-body{width:100%;max-width:440px;margin:-40px auto 0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:calc(28px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px;position:relative}
+.modal{position:fixed;inset:0;z-index:70;background:rgba(2,10,11,.62);display:flex;align-items:flex-end;justify-content:center;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.modal .sheet{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+@media (min-width:520px){.modal{align-items:center}}
+.modal .step{display:flex;gap:12px;align-items:flex-start}.modal .step .n{width:26px;height:26px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font:700 13px var(--f-num);flex:none}
 .auth .btn.pri{background:var(--brand);color:var(--brand-ink)}
 .auth .seg button.on{background:var(--brand);color:var(--brand-ink)}
 .auth .check.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
@@ -622,7 +626,17 @@ function vLogin(){ const reg=AUTH.tab==="register";
     <button class="btn pri" type="submit" ${AUTH.busy?"disabled":""}>${AUTH.busy?'<span class="spin" style="border-color:var(--accent-ink);border-right-color:transparent"></span>':""}${reg?"Создать аккаунт":"Войти"}</button>
     ${reg?"":`<button class="small" type="button" style="color:var(--accent);padding:6px 0" data-act="authReset">Восстановить пароль</button>`}
   </form>
-  <div class="card col" style="gap:10px;text-align:center"><div class="small muted" style="line-height:1.6">Привет!<br>Спасибо, что выбрали M.SPORT!<br>Тренировки, цели, питание, вес и музыка — всё в одном месте.<br>Нам важно ваше мнение: пишите идеи и пожелания, и мы будем делать приложение удобнее.</div><button class="small" style="color:var(--accent);padding:4px 0" data-act="push" data-v="contact">Написать нам</button></div></div></main>`; }
+  <div class="card col" style="gap:10px;text-align:center"><div class="small muted" style="line-height:1.6">Привет!<br>Спасибо, что выбрали M.SPORT!<br>Тренировки, цели, питание, вес и музыка — всё в одном месте.<br>Нам важно ваше мнение: пишите идеи и пожелания, и мы будем делать приложение удобнее.</div><button class="small" style="color:var(--accent);padding:4px 0" data-act="push" data-v="contact">Написать нам</button></div>
+  <button class="small" style="color:var(--muted);padding:4px 0;text-decoration:underline" data-act="betaShow">Как пользоваться тестовой версией</button></div>${betaSeen()?"":betaModal()}</main>`; }
+const betaSeen = () => { try{ return localStorage.getItem("m.betaSeen")==="1"; }catch(e){ return !!UI.betaSeen; } };
+function betaModal(){ return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="betaT"><div class="sheet">
+  <h2 id="betaT">Тестовая версия M.SPORT</h2>
+  <div class="small muted" style="line-height:1.5">Это бета: приложение работает в браузере на телефоне и компьютере. Мы его активно дорабатываем — возможны ошибки и изменения.</div>
+  <div class="step"><span class="n">1</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Включи VPN.</b> Пока сайт открывается только с ним. Скоро это исправим.</div></div>
+  <div class="step"><span class="n">2</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Зарегистрируйся</b> по почте — у тебя будет личный кабинет, данные видны только тебе и на всех твоих устройствах.</div></div>
+  <div class="step"><span class="n">3</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Поставь на экран «Домой»,</b> чтобы открывать как приложение.<br>iPhone: Safari → «Поделиться» → «На экран Домой».<br>Android: Chrome → меню ⋮ → «Добавить на главный экран».</div></div>
+  <div class="step"><span class="n">4</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Пиши нам</b> идеи и ошибки — кнопка «Написать нам» внизу экрана и в Профиле.</div></div>
+  <button class="btn pri" data-act="betaOk">Понятно, начать</button></div></div>`; }
 async function initCaps(){
   if(FB_MODE){ initFirebase(); return; }
   if(!window.claude||typeof claude.use!=="function") return;
@@ -733,7 +747,6 @@ function vHome(){
   return `
   <div class="top"><div><h1>Привет${S.profile.name?", "+esc(S.profile.name):""}!</h1>${F.train?`<div class="small" style="margin-top:3px;color:var(--muted)">Серия без пропусков: <b style="color:var(--accent)">${streak()} дн.</b></div>`:""}</div>
   <div class="row" style="gap:6px"><button class="iconbtn" aria-label="Уведомления" data-act="tab" data-t="profile">${ic("bell")}</button><span class="logo" role="img" aria-label="M.SPORT">${LOGO_SVG}</span></div></div>
-  ${window.M_STANDALONE&&!S.settings.hideBeta?`<div class="card col" style="gap:8px;border-color:var(--brand)"><div class="row between"><b>Тестовая веб-версия</b><button class="iconbtn sm" data-act="hideBeta" aria-label="Скрыть" style="color:var(--muted)">✕</button></div><div class="small" style="line-height:1.55">Приложение работает в браузере на телефоне и компьютере. Пока открывается только с включённым VPN.<br><b style="font-weight:600">Как поставить на экран «Домой»:</b> iPhone — Safari → «Поделиться» → «На экран Домой». Android — Chrome → меню ⋮ → «Добавить на главный экран».</div><button class="btn sec sm" data-act="hideBeta">Понятно</button></div>`:""}
   ${F.train?weekStrip()+hero:""}
   ${!F.train&&F.food?foodHomeCard(true):""}
   ${F.train&&nx?`<button class="card tap row" data-act="openW" data-id="${nx.id}"><span class="tile-ic">${ic("cal")}</span><div class="grow"><div style="font-weight:600">Следующая тренировка</div><div class="small muted">${DFULL[dow(nx.date)]}, ${human(nx.date)}</div><div class="small" style="margin-top:2px">${esc(wTitle(nx))} · ${esc(wSub(nx))}</div></div><span class="chev">${ic("chev")}</span></button>`:""}
@@ -1367,6 +1380,8 @@ async function onAct(el,e){
     case "enReplay": playLesson(enState().audio||[]); break;
     case "enStop": hush(); break;
     case "enSay": { const t=enState().turns[+d.i]; if(t) say(t.content.split("✍️")[0],"en-US"); break; }
+    case "betaOk": try{ localStorage.setItem("m.betaSeen","1"); }catch(e){} UI.betaSeen=true; render(); break;
+    case "betaShow": try{ localStorage.removeItem("m.betaSeen"); }catch(e){} UI.betaSeen=false; render(); break;
     case "hideBeta": S.settings.hideBeta=true; save(); render(); break;
     case "togglePw": { const pi=$("#au-pass"); AUTH.f=AUTH.f||{}; if(pi) AUTH.f.pass=pi.value; AUTH.showPw=!AUTH.showPw; render(); const n=$("#au-pass"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } break; }
     case "authGoogle": { if(!FB_MODE){ toast("Вход через Google работает на сайте"); break; } const fa=firebase.auth(), pr=new firebase.auth.GoogleAuthProvider(); AUTH.err="";
