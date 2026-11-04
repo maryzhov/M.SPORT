@@ -817,9 +817,16 @@ const RADIO_CAT=[
   ["Хип-хоп и рэп",[["rap","Rap Hits"],["rapclassics","Rap Classics"],["yo","Black Rap"],["trap","Trap"],["phonk","Phonk"],["hype","На Хайпе"],["gop","Гоп FM"]]],
   ["Для тренировки",[["workout","Workout"],["club","EDM"],["top100edm","TOP 100 EDM"],["teo","Hardstyle"],["drumhits","D'n'B Classics"],["hbass","Hard Bass"],["pump","Колбасный Цех"]]],
   ["Популярное",[["rr_main","Record"],["rus","Russian Mix"],["russianhits","Russian Hits"],["bighits","Big Hits"],["mix","Megamix"],["rmx","Remix"],["200","Рекорд 00-х"],["sd90","Супердискотека 90-х"],["rock","Rock"]]],
-  ["Спокойное",[["chil","Chill-Out"],["lofi","Lo-Fi"],["deep","Deep"],["chillhouse","Chill House"],["ambient","Ambient"],["synth","Synthwave"]]]
+  ["Спокойное",[["chil","Chill-Out"],["lofi","Lo-Fi"],["deep","Deep"],["chillhouse","Chill House"],["ambient","Ambient"],["synth","Synthwave"]]],
+  ["Новости и бизнес",[]]
 ];
-const RADIO=[].concat(...RADIO_CAT.map(([g,l])=>l.map(([c,n])=>({id:"rr-"+c,n,src:"Radio Record · "+g,g,urls:["https://radiorecord.hostingradio.ru/"+c+"96.aacp"],site:"https://www.radiorecord.ru"}))),
+const RADIO=[].concat(...RADIO_CAT.filter(([g,l])=>l.length).map(([g,l])=>l.map(([c,n])=>({id:"rr-"+c,n,src:"Radio Record · "+g,g,urls:["https://radiorecord.hostingradio.ru/"+c+"96.aacp"],site:"https://www.radiorecord.ru"}))),
+  [{id:"n-vesti",n:"Вести ФМ",src:"ВГТРК",g:"Новости и бизнес",urls:["https://icecast-vgtrk.cdnvideo.ru/vestifm_mp3_192kbps","https://icecast-vgtrk.cdnvideo.ru/vestifm_mp3_128kbps","https://icecast-vgtrk.cdnvideo.ru/vestifm_aac_64kbps"]},
+   {id:"n-bfm",n:"Business FM",src:"Business FM",g:"Новости и бизнес",urls:["https://bfm.hostingradio.ru/bfm128.mp3","https://bfm.hostingradio.ru/bfm96.aacp","https://bfmstream.bfm.ru:8004/fm"]},
+   {id:"n-kom",n:"Коммерсантъ FM",src:"Коммерсантъ",g:"Новости и бизнес",urls:["https://kommersant77.hostingradio.ru:8016/kommersant128.mp3","https://kommersant77.hostingradio.ru:8016/kommersant64.mp3"]},
+   {id:"n-mayak",n:"Маяк",src:"ВГТРК",g:"Новости и бизнес",urls:["https://icecast-vgtrk.cdnvideo.ru/mayakfm_mp3_192kbps","https://icecast-vgtrk.cdnvideo.ru/mayakfm_aac_64kbps"]},
+   {id:"n-rr",n:"Радио России",src:"ВГТРК",g:"Новости и бизнес",urls:["https://icecast-vgtrk.cdnvideo.ru/rrzonam_mp3_192kbps","https://icecast-vgtrk.cdnvideo.ru/rrzonam_aac_64kbps"]},
+   {id:"n-kp",n:"Комсомольская правда",src:"Радио КП",g:"Новости и бизнес",urls:["https://kpradio.hostingradio.ru:8000/128","https://kpradio.hostingradio.ru:8000/64"]}],
   [{id:"rdfm",n:"DFM",src:"DFM",g:"Популярное",urls:["https://dfm.hostingradio.ru/dfm96.aacp"],site:"https://dfm.ru"},{id:"rep",n:"Европа Плюс",src:"Европа Плюс",g:"Популярное",urls:["https://ep256.hostingradio.ru:8052/europaplus256.mp3"],site:"https://europaplus.ru"}]);
 const DEF_FAV=["rr-rap","rr-yo","rr-workout","rr-rr_main"];
 const favIds = () => { S.music=S.music||{}; if(!S.music.fav) S.music.fav=DEF_FAV.slice(); return S.music.fav; };
