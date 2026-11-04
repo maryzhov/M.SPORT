@@ -528,7 +528,7 @@ function initFirebase(){
   try{ firebase.initializeApp(window.FIREBASE_CONFIG); }catch(e){}
   const fa=firebase.auth(), fs=firebase.firestore();
   fa.onAuthStateChanged(async u=>{
-    AUTH.user=u; AUTH.ready=true; SYNC.hash={}; CAP.remote=null; UI.stack=[];
+    AUTH.user=u; AUTH.ready=true; if(u) AUTH.f={}; SYNC.hash={}; CAP.remote=null; UI.stack=[];
     if(!u){ S=null; KEY_CUR=KEY; render(); return; }
     KEY_CUR=KEY+"."+u.uid; let loc=null; try{ loc=JSON.parse(localStorage.getItem(KEY_CUR)||"null"); }catch(e){}
     S = loc&&loc.v ? migrate(loc) : cleanSeed(u.displayName||AUTH.pendingName||"");
@@ -541,7 +541,7 @@ function initFirebase(){
 async function authAct(kind){
   const v=id=>($("#"+id)?$("#"+id).value:"").trim();
   const name=v("au-name"), email=v("au-email").toLowerCase(), pass=$("#au-pass")?$("#au-pass").value:"";
-  AUTH.f={name,email};
+  AUTH.f={name,email,pass};
   const fa=firebase.auth(); AUTH.err=""; AUTH.info="";
   try{
     if(kind==="login"){ if(!email||!pass){ AUTH.err="Введи почту и пароль"; render(); return; } AUTH.busy=true; render(); await fa.signInWithEmailAndPassword(email,pass); }
@@ -558,7 +558,7 @@ function vLogin(){ const reg=AUTH.tab==="register";
   <form class="card col" id="authForm" novalidate>
     ${reg?`<div class="field"><label for="au-name">Имя</label><input class="inp" id="au-name" autocomplete="given-name" placeholder="Как к тебе обращаться" value="${esc((AUTH.f||{}).name||"")}"></div>`:""}
     <div class="field"><label for="au-email">Почта</label><input class="inp" id="au-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.ru" value="${esc((AUTH.f||{}).email||"")}"></div>
-    <div class="field"><label for="au-pass">Пароль</label><input class="inp" id="au-pass" type="password" autocomplete="${reg?"new-password":"current-password"}" placeholder="${reg?"Минимум 6 символов":""}"></div>
+    <div class="field"><label for="au-pass">Пароль</label><input class="inp" id="au-pass" type="password" autocomplete="${reg?"new-password":"current-password"}" placeholder="${reg?"Минимум 6 символов":""}" value="${esc((AUTH.f||{}).pass||"")}"></div>
     ${AUTH.err?`<div class="small" style="color:var(--bad)" role="alert">${esc(AUTH.err)}</div>`:""}${AUTH.info?`<div class="small" style="color:var(--good)" role="status">${esc(AUTH.info)}</div>`:""}
     <button class="btn pri" type="submit" ${AUTH.busy?"disabled":""}>${AUTH.busy?'<span class="spin" style="border-color:var(--accent-ink);border-right-color:transparent"></span>':""}${reg?"Создать аккаунт":"Войти"}</button>
     ${reg?"":`<button class="small" type="button" style="color:var(--accent);padding:6px 0" data-act="authReset">Забыли пароль?</button>`}
@@ -1278,6 +1278,7 @@ document.addEventListener("submit",e=>{ if(e.target.id==="authForm"){ e.preventD
 document.addEventListener("keydown",e=>{ if((e.key==="Enter"||e.key===" ")&&e.target.matches('[role="button"][data-act]')){ e.preventDefault(); e.target.click(); } });
 document.addEventListener("input",e=>{
   const t=e.target, id=t.id, ds=t.dataset||{};
+  if(id&&id.startsWith("au-")){ AUTH.f=AUTH.f||{}; AUTH.f[id.slice(3)]=t.value; return; }
   if(id==="foodQ"){ UI.foodQ=t.value; $("#foodList").innerHTML=foodListHtml(); return; }
   if(id==="libQ"){ UI.libQ=t.value; const top=topS(); const all=S.library.map(x=>Object.assign({mine:true},x)).concat(STD_EX), q=UI.libQ.trim().toLowerCase(); $("#libList").innerHTML=libList(all.filter(x=>(UI.libSeg==="all"||(UI.libSeg==="mine"?x.mine:!x.mine))&&(!q||x.n.toLowerCase().includes(q))), top&&top.v==="libPick"?top.id:null); return; }
   if(id==="foodTxt"){ UI.foodTxt=t.value; return; }
