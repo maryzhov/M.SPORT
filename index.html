@@ -127,6 +127,11 @@ svg.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;str
 .modal{position:fixed;inset:0;z-index:70;background:rgba(2,10,11,.62);display:flex;align-items:flex-end;justify-content:center;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .modal .sheet{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
 @media (min-width:520px){.modal{align-items:center}}
+.modal.center{align-items:center}
+.modal.full{background:var(--bg);align-items:stretch}.modal.full .sheet{max-width:440px;margin:0 auto;border:0;box-shadow:none;background:var(--bg);justify-content:center;gap:18px}
+.slide-ic{width:96px;height:96px;border-radius:28px;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 40px var(--f-num);margin:0 auto}
+.dots-row{display:flex;gap:6px;justify-content:center}.dots-row i{width:8px;height:8px;border-radius:50%;background:var(--line)}.dots-row i.on{background:var(--brand);width:22px;border-radius:4px}
+.beta-top{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));width:calc(100% - 24px);max-width:420px;z-index:70;background:var(--logo-red);color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .modal .step{display:flex;gap:12px;align-items:flex-start}.modal .step .n{width:26px;height:26px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font:700 13px var(--f-num);flex:none}
 .auth .btn.pri{background:var(--brand);color:var(--brand-ink)}
 .auth .seg button.on{background:var(--brand);color:var(--brand-ink)}
@@ -640,11 +645,25 @@ function vLogin(){ const reg=AUTH.tab==="register";
   <div class="card col" style="gap:10px;text-align:center"><div class="small muted" style="line-height:1.6">Привет!<br>Спасибо, что выбрали M.SPORT!<br>Тренировки, цели, питание, вес и музыка — всё в одном месте.<br>Нам важно ваше мнение: пишите идеи и пожелания, и мы будем делать приложение удобнее.</div><button class="small" style="color:var(--accent);padding:4px 0" data-act="push" data-v="contact">Написать нам</button></div>
   <button class="small" style="color:var(--muted);padding:4px 0;text-decoration:underline" data-act="betaShow">Как пользоваться тестовой версией</button></div>${betaSeen()?"":betaModal()}</main>`; }
 const betaSeen = () => { try{ return localStorage.getItem("m.betaSeen")==="1"; }catch(e){ return !!UI.betaSeen; } };
-function betaModal(){ return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="betaT"><div class="sheet">
+try{ const m=(location.hash||"").match(/^#bv-([abcd])$/); if(m){ localStorage.setItem("m.bv",m[1]); localStorage.removeItem("m.betaSeen"); } }catch(e){}
+const BV = () => { try{ return localStorage.getItem("m.bv")||"a"; }catch(e){ return "a"; } };
+const BETA_STEPS = [
+  ["Включи VPN","Пока сайт открывается только с ним.","🛡"],
+  ["Зарегистрируйся","По почте — у тебя будет личный кабинет, данные будут видны на всех твоих устройствах.","✉"],
+  ["Поставь на экран «Домой»","iPhone: Safari → «Поделиться» → «На экран Домой».<br>Android: Chrome → меню ⋮ → «Добавить на главный экран».","＋"],
+  ["Пиши нам","Идеи и ошибки — кнопка «Написать нам» внизу экрана и в Профиле.","✎"]];
+function betaModal(){ const v=BV();
+  if(v==="c"){ const i=Math.min(UI.bi||0,BETA_STEPS.length-1), st=BETA_STEPS[i];
+    return `<div class="modal full" role="dialog" aria-modal="true"><div class="sheet slides"><div class="row between"><span class="small muted">Тестовая версия · ${i+1} из ${BETA_STEPS.length}</span><button class="small muted" data-act="betaOk">Пропустить</button></div>
+      <div class="slide-ic">${i+1}</div><h2 style="text-align:center">${st[0]}</h2><div class="muted" style="text-align:center;line-height:1.55">${st[1]}</div>
+      <div class="dots-row">${BETA_STEPS.map((_,k)=>`<i class="${k===i?"on":""}"></i>`).join("")}</div>
+      <button class="btn pri" data-act="${i<BETA_STEPS.length-1?"betaNext":"betaOk"}">${i<BETA_STEPS.length-1?"Дальше":"Начать"}</button></div></div>`; }
+  if(v==="d") return `<div class="beta-top" role="note"><div class="row between" style="gap:8px"><b style="font-weight:600">Тестовая версия · нужен VPN</b><button class="iconbtn sm" data-act="betaOk" aria-label="Закрыть" style="color:inherit">✕</button></div><details><summary class="small" style="cursor:pointer;opacity:.9">Как пользоваться</summary><div class="small" style="line-height:1.55;margin-top:6px">${BETA_STEPS.map((x,k)=>`${k+1}. <b style="font-weight:600">${x[0]}.</b> ${x[1]}`).join("<br>")}</div></details></div>`;
+  return `<div class="modal ${v==="b"?"center":""}" role="dialog" aria-modal="true" aria-labelledby="betaT"><div class="sheet">
   <h2 id="betaT">Тестовая версия M.SPORT</h2>
-  <div class="small muted" style="line-height:1.5">Это бета: приложение работает в браузере на телефоне и компьютере. Мы его активно дорабатываем — возможны ошибки и изменения.</div>
+  <div class="small muted" style="line-height:1.5">Это бета-версия: приложение работает в браузере на телефоне и компьютере. Мы активно работаем над доработкой приложения.</div>
   <div class="step"><span class="n">1</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Включи VPN.</b> Пока сайт открывается только с ним.</div></div>
-  <div class="step"><span class="n">2</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Зарегистрируйся</b> по почте — у тебя будет личный кабинет, данные видны только тебе и на всех твоих устройствах.</div></div>
+  <div class="step"><span class="n">2</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Зарегистрируйся</b> по почте — у тебя будет личный кабинет, данные будут видны на всех твоих устройствах.</div></div>
   <div class="step"><span class="n">3</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Поставь на экран «Домой»,</b> чтобы открывать как приложение.<br>iPhone: Safari → «Поделиться» → «На экран Домой».<br>Android: Chrome → меню ⋮ → «Добавить на главный экран».</div></div>
   <div class="step"><span class="n">4</span><div class="small" style="line-height:1.5"><b style="font-weight:600">Пиши нам</b> идеи и ошибки — кнопка «Написать нам» внизу экрана и в Профиле.</div></div>
   <button class="btn pri" data-act="betaOk">Понятно, начать</button></div></div>`; }
@@ -1392,6 +1411,7 @@ async function onAct(el,e){
     case "enReplay": playLesson(enState().audio||[]); break;
     case "enStop": hush(); break;
     case "enSay": { const t=enState().turns[+d.i]; if(t) say(t.content.split("✍️")[0],"en-US"); break; }
+    case "betaNext": UI.bi=(UI.bi||0)+1; render(); break;
     case "betaOk": try{ localStorage.setItem("m.betaSeen","1"); }catch(e){} UI.betaSeen=true; render(); break;
     case "betaShow": try{ localStorage.removeItem("m.betaSeen"); }catch(e){} UI.betaSeen=false; render(); break;
     case "hideBeta": S.settings.hideBeta=true; save(); render(); break;
