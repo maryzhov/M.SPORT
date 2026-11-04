@@ -935,6 +935,7 @@ function vWorkout(top){
     <div class="card col"><h2>Сон</h2>
       <div class="kv"><div class="field"><label for="f-after-sleep">Часов</label>${inp("after.sleep",A.sleep,"7:30")}</div><div class="field"><label for="f-after-feel">Самочувствие сейчас</label>${inp("after.feel",A.feel,"Ровно")}</div></div>
       <div><div class="flabel" style="margin-bottom:8px">Качество сна</div>${chipSet("after.sleepQ",[["1","Плохое"],["2","Среднее"],["3","Хорошее"]],A.sleepQ)}</div></div>
+    ${CAP.sample?`<div class="card col"><div class="row" style="gap:8px"><span class="tile-ic">${ic("spark")}</span><b>Разбор от ИИ-тренера</b></div>${A.coach?`<div style="line-height:1.5;white-space:pre-wrap">${esc(A.coach)}</div>`:`<div class="small muted">Заполни факт и самочувствие — тренер разберёт тренировку и подскажет, что поменять дальше.</div>`}<button class="btn ai" data-act="coachReview" ${UI.ai.busy?"disabled":""}>${ic("spark")}${A.coach?"Разобрать заново":"Разобрать тренировку"}</button>${aiLine()}</div>`:""}
     <button class="btn pri" data-act="finish">${ic("check")}${w.done?"Сохранить":"Сохранить и отметить выполненной"}</button>`;
   }
   return `${ovHead(esc(wTitle(w)),`<button class="iconbtn" data-act="delW" aria-label="Удалить тренировку">${ic("trash")}</button>`)}
@@ -944,7 +945,44 @@ function vWorkout(top){
 /* ================= LIVE MODE ================= */
 const liveEl = () => UI.live ? UI.live.acc + (UI.live.running ? Date.now()-UI.live.t0 : 0) : 0;
 let liveTimer=null, wakeLock=null;
-function liveTick(){ const el=$("#liveT"); if(el) el.textContent=fmtT(liveEl()/1000); }
+function liveTick(){ const el=$("#liveT"); if(el) el.textContent=fmtT(liveEl()/1000); coachTick(); }
+/* ===== voice ===== */
+const VOICE = { on:true };
+function say(text,lang){ try{ if(!("speechSynthesis" in window)||!text) return; const u=new SpeechSynthesisUtterance(text); u.lang=lang||"ru-RU"; u.rate=lang&&lang.startsWith("en")?0.95:1.02;
+  const vs=speechSynthesis.getVoices(); const v=vs.find(x=>x.lang&&x.lang.replace("_","-").toLowerCase().startsWith((lang||"ru-RU").slice(0,2).toLowerCase())); if(v) u.voice=v; speechSynthesis.speak(u); }catch(e){} }
+function sayQueue(arr,lang){ try{ speechSynthesis.cancel(); }catch(e){} arr.forEach(t=>say(t,lang)); }
+function hush(){ try{ speechSynthesis.cancel(); }catch(e){} }
+/* ===== AI coach ===== */
+function recentLog(n=8){ return S.workouts.filter(w=>w.done&&w.date<=TODAY).sort((a,b)=>a.date<b.date?-1:1).slice(-n).map(w=>`${w.date} ${tName(w.type)}${kmOf(w)?" "+kmOf(w)+" км":""}${w.fact.time?" "+w.fact.time:""}${w.after&&w.after.rpe?" RPE "+w.after.rpe:""}${w.after&&w.after.comment?" ("+w.after.comment.slice(0,60)+")":""}`).join("; "); }
+function coachContext(w){ const B=w.before||{}, g=S.goals.filter(x=>x.status==="active").map(x=>x.title).join(", ");
+  const mood={1:"плохое",2:"ровное",3:"хорошее"}[B.mood]||"не указано", en={1:"низкая",2:"средняя",3:"высокая"}[B.energy]||"не указана", fat={0:"нет",1:"небольшая",2:"сильная"}[B.fatigue]||"не указана";
+  return `Спортсмен: ${S.profile.name||"бегун"}, ${S.profile.birth?Math.floor(daysBetween(S.profile.birth,TODAY)/365.25)+" лет":""}. Цели: ${g||"нет"}.
+Сегодняшняя тренировка: ${tName(w.type)}${w.plan.km?", "+w.plan.km+" км":""}${w.plan.min?", "+w.plan.min+" мин":""}${w.plan.pace?", темп "+w.plan.pace+" /км":""}${w.plan.route?", маршрут: "+w.plan.route:""}. ${w.plan.desc||""}
+Этапы: ${(w.plan.stages||[]).map((x,i)=>(i+1)+") "+x.n+": "+x.s).join("; ")||"нет"}.
+Состояние до: настроение ${mood}, энергия ${en}, усталость ${fat}${B.pain==="1"?", есть дискомфорт: "+(B.painWhere||"не уточнено"):""}${B.hr?", пульс покоя "+B.hr:""}.
+Последние тренировки: ${recentLog()}.`; }
+async function coachPrepare(w){
+  const C=UI.live.coach={ready:false,lines:[],stage:[],i:0,last:Date.now(),msg:"Тренер готовится…"}; renderOv();
+  try{ const r=await aiJSON(`Ты — живой, тёплый, но требовательный беговой тренер. Говоришь по-русски, коротко, на «ты», без канцелярита и без эмодзи. Твои фразы будут зачитаны голосом в наушники во время тренировки.
+${coachContext(w)}
+Верни только JSON {"intro":"2–3 предложения перед стартом: цель тренировки, на что обратить внимание с учётом состояния","stages":["по одной фразе на старт каждого этапа, столько же сколько этапов"],"lines":["10 коротких фраз поддержки и контроля на середину тренировки: про темп, дыхание, технику, плечи, каденс, разговорный темп, воду; разные, по 1 предложению"],"finish":"1–2 предложения на финише"}. Если есть боль или сильная усталость — мягко предложи снизить темп. Не придумывай цифры пульса и темпа, которых нет в плане.`,null,"quick");
+    C.intro=String(r.intro||""); C.stage=(r.stages||[]).map(String); C.lines=(r.lines||[]).map(String); C.finish=String(r.finish||""); C.ready=true; C.msg=C.intro;
+    if(VOICE.on) say(C.intro); if(C.stage[0]&&VOICE.on) say(C.stage[0]); renderOv();
+  }catch(e){ C.msg=""; C.fail=true; renderOv(); if(e&&e.code!=="unavailable") toast(AI_ERR[e&&e.code]||"Тренер сейчас недоступен"); } }
+function coachTick(){ const L=UI.live; if(!L||!L.coach||!L.coach.ready||!L.running) return; const C=L.coach, every=(+S.coachEvery||5)*60000;
+  if(Date.now()-C.last>=every&&C.lines.length){ const t=C.lines[C.i%C.lines.length]; C.i++; C.last=Date.now(); C.msg=t; if(VOICE.on) say(t); const el=$("#coachMsg"); if(el) el.textContent=t; } }
+async function coachAsk(w){ const L=UI.live; if(!L) return; L.coach=L.coach||{}; L.coach.msg="Слушаю…"; renderOv();
+  try{ const {text}=await CAP.sample(`Ты — беговой тренер. Спортсмен прямо сейчас на тренировке, прошло ${fmtT(liveEl()/1000)}, этап: ${(w.plan.stages[L.si]||{}).n||"основная часть"}. ${coachContext(w)}
+Скажи ему 1–2 коротких живых предложения по-русски: поддержи и дай одну конкретную подсказку. Без эмодзи.`,{modelTier:"quick",cache:false});
+    L.coach.msg=text.trim(); if(VOICE.on) say(L.coach.msg); renderOv(); }catch(e){ L.coach.msg=""; renderOv(); toast(AI_ERR[e&&e.code]||"Тренер сейчас недоступен"); } }
+async function coachReview(w){ aiBusy(true,"Тренер разбирает тренировку…");
+  try{ const A=w.after||{}, F=w.fact||{};
+    const {text}=await CAP.sample(`Ты — беговой тренер. Сделай короткий разбор тренировки по-русски, на «ты», 4–6 предложений: что получилось, на что обратить внимание, что поменять в следующей тренировке и в плане на ближайшие дни. Честно, без лести, без эмодзи.
+${coachContext(w)}
+Факт: ${F.km?F.km+" км":""} ${F.time||""} ${F.hr?"пульс "+F.hr:""} ${F.km&&F.time?"темп "+paceOf(kmOf(w),F.time)+" /км":""}.
+После: оценка ${({1:"тяжело",2:"нормально",3:"легко"})[A.rating]||"не указана"}, RPE ${A.rpe||"—"}, сил хватило: ${A.enough==="0"?"нет":A.enough==="1"?"да":"—"}, тяжесть в ногах: ${A.legs==="1"?"да":A.legs==="0"?"нет":"—"}, боль: ${A.pain==="1"?"есть":A.pain==="0"?"нет":"—"}, сон ${A.sleep||"—"}. Комментарий: ${A.comment||"—"}.
+План на ближайшие дни: ${S.workouts.filter(x=>x.date>w.date&&!x.done).sort((a,b)=>a.date<b.date?-1:1).slice(0,4).map(x=>x.date+" "+tName(x.type)+(x.plan.km?" "+x.plan.km+" км":"")).join("; ")||"нет"}.`,{modelTier:"default",cache:false});
+    w.after=w.after||{}; w.after.coach=text.trim(); save(); aiBusy(false); }catch(e){ aiFail(e); } }
 function vLive(){
   const L=UI.live, w=S.workouts.find(x=>x.id===L.id); if(!w) return ovHead("Тренировка");
   const stg=w.plan.stages, cur=stg[L.si];
@@ -954,6 +992,11 @@ function vLive(){
   <div class="card live-stage">${stg.length?`<div class="eyebrow">Этап ${L.si+1} из ${stg.length}</div><div style="font:700 24px var(--f-body);margin:8px 0 4px">${esc(cur.n)}</div><div class="muted">${esc(cur.s)}</div>`:`<div class="muted">Этапы не заданы — просто беги.</div>`}</div>
   <button class="bigplay" data-act="liveToggle" aria-label="${L.running?"Пауза":"Старт"}">${ic(L.running?"pause":"play")}</button>
   ${stg.length>1?`<div class="grid2"><button class="btn sec" data-act="liveStage" data-n="-1" ${L.si===0?"disabled":""}>${ic("prev")}Предыдущий</button><button class="btn sec" data-act="liveStage" data-n="1" ${L.si>=stg.length-1?"disabled":""}>Следующий${ic("next")}</button></div>`:""}
+  ${CAP.sample?`<div class="card col" style="gap:10px"><div class="row between"><div class="row" style="gap:8px"><span class="tile-ic">${ic("spark")}</span><b>ИИ-тренер</b></div>${tgl(VOICE.on,"coachVoice",'aria-label="Голос тренера"')}</div>
+    ${L.coach?`<div id="coachMsg" style="line-height:1.45">${L.coach.msg?esc(L.coach.msg):L.coach.fail?'<span class="muted">Тренер не ответил. Попробуй «Спросить тренера».</span>':'<span class="spin"></span>'}</div>
+    <div class="grid2"><button class="btn sec sm" style="width:100%" data-act="coachAsk">${ic("chat")}Спросить тренера</button><button class="btn sec sm" style="width:100%" data-act="coachRepeat">Повторить</button></div>
+    <div class="small muted">Подсказки голосом каждые ${S.coachEvery||5} мин и на смене этапа. Надень наушники.</div>`
+    :`<div class="small muted">Тренер даст установку с учётом твоего состояния и будет подсказывать голосом во время тренировки.</div><button class="btn ai" data-act="coachStart">${ic("spark")}Включить тренера</button>`}</div>`:""}
   ${player()}
   <button class="btn dang" data-act="liveFinish">${ic("stop")}Завершить и внести факт</button>
   <div class="note">GPS и пульс с часов в веб-версии не пишутся — дистанцию впишешь на следующем шаге, загрузишь .gpx или скрин. Экран не погаснет, пока страница открыта.</div>`; }
@@ -1205,6 +1248,30 @@ const LEGAL = {
   privacy:["Обработка персональных данных",`<p>Что собираем: имя, почту, данные, которые вы вносите сами (тренировки, питание, вес, рост, дата рождения, цели, фото и скрины).</p><p>Зачем: чтобы работал ваш личный кабинет — сохранять и показывать ваши записи на ваших устройствах. Данные не продаются и не передаются третьим лицам для рекламы.</p><p>Где хранятся: в облачной базе (Google Firebase). Доступ к записям есть только у вас по вашему логину.</p><p>Ваши права: посмотреть, выгрузить (Профиль → Экспорт) и удалить данные вместе с аккаунтом (Профиль → Удалить аккаунт). Согласие можно отозвать, удалив аккаунт.</p><p class="muted">Черновик для теста. Перед публичным запуском текст и место хранения данных будут приведены в соответствие с 152-ФЗ.</p>`]
 };
 function vLegal(top){ const L=LEGAL[top.id]||LEGAL.terms; return `${ovHead(L[0])}<div class="card" style="line-height:1.55">${L[1]}</div>`; }
+const EN_LEVELS=[["A2","Начальный"],["B1","Средний"],["B2","Выше среднего"]], EN_TOPICS=[["run","Бег и спорт"],["daily","Повседневное"],["biz","Бизнес"],["travel","Путешествия"]];
+function enState(){ S.english=S.english||{level:"B1",topic:"run",turns:[]}; return S.english; }
+function vEnglish(){ const E=enState(), T=E.turns.slice(-30);
+  if(!CAP.sample) return `${ovHead("Английский с ИИ")}<div class="note">ИИ-учитель работает в версии M.SPORT внутри Claude. На сайте появится вместе с ИИ-тренером.</div>`;
+  return `${ovHead("Английский с ИИ")}
+  <div class="card col" style="gap:10px"><div class="flabel">Уровень</div><div class="seg">${EN_LEVELS.map(([k,l])=>`<button class="${E.level===k?"on":""}" data-act="enLevel" data-v="${k}">${k} · ${l}</button>`).join("")}</div>
+    <div class="flabel">Тема</div><div class="chips">${EN_TOPICS.map(([k,l])=>`<button class="chip xs ${E.topic===k?"on":""}" data-act="enTopic" data-v="${k}">${l}</button>`).join("")}</div></div>
+  <div class="card col" style="gap:10px"><div class="row" style="gap:8px"><span class="tile-ic">${ic("music")}</span><b>Урок в наушники на пробежку</b></div><div class="small muted">10 фраз по теме: учитель говорит фразу по-английски, перевод и повтор. Запусти перед стартом и слушай на бегу.</div>
+    <div class="grid2"><button class="btn ai sm" style="width:100%" data-act="enAudio" ${UI.ai.busy?"disabled":""}>${ic("play")}Новый урок</button><button class="btn sec sm" style="width:100%" data-act="enStop">${ic("stop")}Стоп</button></div>${E.audio&&E.audio.length?`<div class="small muted">${E.audio.length} фраз в уроке · <button class="small" style="color:var(--accent)" data-act="enReplay">повторить</button></div>`:""}</div>
+  <div class="card col" style="gap:10px"><b>Разговор с учителем</b>
+    ${T.length?`<div class="col" style="gap:8px">${T.map((t,i)=>`<div style="align-self:${t.role==="user"?"flex-end":"flex-start"};max-width:88%;background:${t.role==="user"?"var(--accent-soft)":"var(--surface2)"};border-radius:14px;padding:9px 12px;line-height:1.45">${esc(t.content).replace(/\n/g,"<br>")}${t.role==="assistant"?`<div><button class="small" style="color:var(--accent);padding:4px 0" data-act="enSay" data-i="${E.turns.length-T.length+i}">▶ послушать</button></div>`:""}</div>`).join("")}</div>`:`<div class="small muted">Напиши что-нибудь по-английски (или по-русски — учитель поможет перевести). Он ответит, исправит ошибки и задаст вопрос, чтобы разговор шёл дальше.</div>`}
+    ${aiLine()}
+    <textarea class="inp" id="en-txt" rows="2" placeholder="Hi! Today I ran 5 km…"></textarea>
+    <div class="grid2"><button class="btn pri sm" style="width:100%" data-act="enSend" ${UI.ai.busy?"disabled":""}>${ic("send")}Отправить</button><button class="btn sec sm" style="width:100%" data-act="enReset">Новый разговор</button></div></div>`; }
+const enRules = E => `You are a friendly English teacher for a Russian-speaking adult (${S.profile.name||"student"}), level ${E.level}. Topic: ${({run:"running, training and sport",daily:"everyday life",biz:"business and work",travel:"travel"})[E.topic]}. Reply in simple English for this level, 2–4 sentences, then always ask one follow-up question. If the student made mistakes, add a new line starting with "✍️ " and list the corrections briefly in Russian (wrong → right). If the student wrote in Russian, help them say it in English. No markdown.`;
+async function enSend(){ const E=enState(), txt=($("#en-txt").value||"").trim(); if(!txt){ toast("Напиши сообщение"); return; }
+  E.turns.push({role:"user",content:txt}); save(); aiBusy(true,"Учитель отвечает…");
+  try{ const hist=E.turns.slice(-16); const {text}=await CAP.sample([{role:"user",content:enRules(E)},...hist],{modelTier:"quick",cache:false});
+    E.turns.push({role:"assistant",content:text.trim()}); save(); aiBusy(false); say(text.split("✍️")[0],"en-US"); const i=$("#ov .inner"); if(i) i.scrollTop=i.scrollHeight; }
+  catch(e){ E.turns.pop(); aiFail(e); } }
+async function enAudio(){ const E=enState(); aiBusy(true,"Готовлю урок…");
+  try{ const r=await aiJSON(`Make a short audio English lesson for a Russian-speaking runner, level ${E.level}, topic: ${({run:"running and training",daily:"everyday life",biz:"business",travel:"travel"})[E.topic]}. Return only JSON array of 10 objects {"en":"useful natural phrase","ru":"перевод по-русски"}. Phrases should be practical, different, 4–10 words.`,null,"quick");
+    E.audio=(Array.isArray(r)?r:[]).filter(x=>x&&x.en).slice(0,10); save(); aiBusy(false); playLesson(E.audio); }catch(e){ aiFail(e); } }
+function playLesson(arr){ hush(); arr.forEach((x,i)=>{ say("Фраза "+(i+1)); say(x.en,"en-US"); say(x.ru); say(x.en,"en-US"); }); toast("Урок играет — можно бежать"); }
 function vProfile(){ const s=S.settings, pr=S.profile, N=S.notify, demo=S.workouts.filter(w=>w.demo).length;
   const age=pr.birth?Math.floor(daysBetween(pr.birth,TODAY)/365.25):null;
   const nt=[["train","Напоминания о тренировках"],["water","Напоминания о воде"],["food","Контроль питания"],["weight","Напоминание о взвешивании"],["weekly","Еженедельный отчёт"],["motiv","Мотивационные сообщения"]];
@@ -1222,6 +1289,7 @@ function vProfile(){ const s=S.settings, pr=S.profile, N=S.notify, demo=S.workou
     <div class="li"><span class="grow">Вечернее время</span><input class="inp" style="width:110px;height:38px" type="time" data-ntf="evening" value="${N.evening}" aria-label="Вечернее время"></div></div>
     <div class="small muted" style="margin-top:6px">Настройки сохраняются. Сами уведомления на телефон придут в мобильном приложении.</div></div>
   <div class="card"><h2>Виды активности</h2><div class="chips" style="margin-top:10px">${Object.keys(TYPES).map(t=>`<span class="chip xs"><span class="sw" style="background:${col(t)}"></span>${tName(t)}</span>`).join("")}</div></div>
+  <button class="card tap row" data-act="push" data-v="english"><span class="tile-ic">${ic("chat")}</span><div class="grow"><b>Английский с ИИ</b><div class="small muted">Разговор с учителем и уроки в наушники на пробежку</div></div><span class="chev">${ic("chev")}</span></button>
   <div class="card"><h2>Помощь и связь</h2><div class="list" style="margin-top:6px"><button class="li" style="width:100%;text-align:left" data-act="push" data-v="contact"><span class="tile-ic">${ic("chat")}</span><span class="grow"><b style="font-weight:600;display:block">Написать нам</b><span class="small muted">Поддержка, идеи, ошибки</span></span><span class="chev">${ic("chev")}</span></button><a class="li" href="${GUIDE_URL}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="tile-ic">${ic("doc")}</span><span class="grow"><b style="font-weight:600;display:block">Инструкция</b><span class="small muted">Что заполнять и как пользоваться</span></span><span class="chev">${ic("chev")}</span></a><button class="li" style="width:100%;text-align:left" data-act="push" data-v="legal" data-id="privacy"><span class="tile-ic">${ic("doc")}</span><span class="grow"><b style="font-weight:600;display:block">Персональные данные</b><span class="small muted">Что храним и зачем</span></span><span class="chev">${ic("chev")}</span></button><button class="li" style="width:100%;text-align:left" data-act="push" data-v="legal" data-id="terms"><span class="tile-ic">${ic("doc")}</span><span class="grow"><b style="font-weight:600;display:block">Условия использования</b></span><span class="chev">${ic("chev")}</span></button></div></div>
   ${AUTH.mode==="fb"&&AUTH.user?`<div class="card col"><div class="row"><span class="tile-ic">${ic("user")}</span><div class="grow"><b>Аккаунт</b><div class="small muted">${esc(AUTH.user.email||"")}</div></div></div><button class="btn sec" data-act="pwReset">Сменить пароль</button><button class="btn dang" data-act="logout">Выйти из аккаунта</button><button class="small" style="color:var(--bad);padding:6px 0" data-act="delAccount">Удалить аккаунт и все данные</button></div>`:""}
   <div class="card col"><div class="row"><span class="tile-ic">${ic("cloud")}</span><div class="grow"><b>Синхронизация</b><div class="small muted" id="syncLine">${syncText()}</div></div></div>
@@ -1246,7 +1314,7 @@ function render(){
   $("#app").innerHTML=`<main class="view">${V[UI.tab]()}</main><nav class="tabbar">${tabs.map(([k,l,i])=>`<button class="${UI.tab===k?"on":""}" data-act="tab" data-t="${k}" ${UI.tab===k?'aria-current="page"':""}>${ic(i)}<span>${l}</span></button>`).join("")}</nav>`;
   renderOv(); }
 const OV = {workout:vWorkout,goals:()=>vGoals(true),goal:vGoal,goalEdit:vGoalEdit,weight:vWeight,food:()=>vFood(true),foodAdd:vFoodAdd,foodItem:vFoodItem,foodAn:vFoodAn,foodSet:vFoodSet,
-  contact:vContact,legal:vLegal,libPick:vLibPick,ex:vEx,live:vLive,music:vMusic,records:vRecords,planImport:vPlanImport};
+  english:vEnglish,contact:vContact,legal:vLegal,libPick:vLibPick,ex:vEx,live:vLive,music:vMusic,records:vRecords,planImport:vPlanImport};
 const ovKey = t => [t.v,t.id||"",t.sub||"",t.mode||""].join("|");
 function renderOv(){
   const top=UI.stack[UI.stack.length-1], el=$("#ov");
@@ -1273,6 +1341,14 @@ async function onAct(el,e){
     case "delAccount": { if(el.dataset.confirm!=="1"){ el.dataset.confirm="1"; el.textContent="Точно удалить? Данные не восстановить. Нажми ещё раз"; break; }
       try{ clearTimeout(SYNC.timer); const keys=Object.keys(SYNC.hash); for(const k of keys){ try{ await CAP.remote.del(k); }catch(e){} } const u=firebase.auth().currentUser; try{ localStorage.removeItem(KEY_CUR); }catch(e){} await u.delete(); toast("Аккаунт удалён"); }
       catch(err){ toast(err&&err.code==="auth/requires-recent-login"?"Для удаления выйди и войди заново, затем повтори":"Не получилось удалить аккаунт"); } break; }
+    case "enSend": await enSend(); break;
+    case "enReset": enState().turns=[]; save(); renderOv(); break;
+    case "enLevel": enState().level=d.v; save(); renderOv(); break;
+    case "enTopic": enState().topic=d.v; save(); renderOv(); break;
+    case "enAudio": say(" "); await enAudio(); renderOv(); break;
+    case "enReplay": playLesson(enState().audio||[]); break;
+    case "enStop": hush(); break;
+    case "enSay": { const t=enState().turns[+d.i]; if(t) say(t.content.split("✍️")[0],"en-US"); break; }
     case "togglePw": { const pi=$("#au-pass"); AUTH.f=AUTH.f||{}; if(pi) AUTH.f.pass=pi.value; AUTH.showPw=!AUTH.showPw; render(); const n=$("#au-pass"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } break; }
     case "authGoogle": { if(!FB_MODE){ toast("Вход через Google работает на сайте"); break; } const fa=firebase.auth(), pr=new firebase.auth.GoogleAuthProvider(); AUTH.err="";
       try{ const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||navigator.standalone; if(ios) await fa.signInWithRedirect(pr); else await fa.signInWithPopup(pr); }
@@ -1323,8 +1399,13 @@ async function onAct(el,e){
     case "exDel": { const t=topS(); S.library=S.library.filter(y=>y.id!==t.draft._srcId); save(); UI.stack.pop(); render(); toast("Упражнение удалено"); break; }
     case "startLive": { const w=curW(); startLive(w); break; }
     case "liveToggle": { const L=UI.live; if(L.running){ L.acc+=Date.now()-L.t0; L.running=false; } else { L.t0=Date.now(); L.running=true; } renderOv(); break; }
-    case "liveStage": { UI.live.si=Math.max(0,UI.live.si+(+d.n)); renderOv(); break; }
-    case "liveFinish": { const w=S.workouts.find(x=>x.id===UI.live.id); const sec=liveEl()/1000; if(sec>30) w.fact.time=fmtT(sec); stopLive(); UI.live=null; save(); UI.stack.pop(); const t=topS(); if(t&&t.v==="workout"){ t.sub="fact"; } render(); toast(sec>30?"Время записано: "+fmtT(sec):"Тренировка короче 30 секунд — время не записано"); break; }
+    case "liveStage": { const L=UI.live; L.si=Math.max(0,L.si+(+d.n)); const C=L.coach; if(C&&C.ready){ const t=C.stage[L.si]||""; if(t){ C.msg=t; C.last=Date.now(); if(VOICE.on) say(t); } } renderOv(); break; }
+    case "coachStart": { const w=S.workouts.find(x=>x.id===UI.live.id); say(" "); coachPrepare(w); break; }
+    case "coachAsk": { const w=S.workouts.find(x=>x.id===UI.live.id); coachAsk(w); break; }
+    case "coachRepeat": { const C=UI.live&&UI.live.coach; if(C&&C.msg) say(C.msg); break; }
+    case "coachVoice": VOICE.on=!VOICE.on; if(!VOICE.on) hush(); renderOv(); break;
+    case "coachReview": { const w=curW(); await coachReview(w); renderOv(); break; }
+    case "liveFinish": { const w=S.workouts.find(x=>x.id===UI.live.id); const sec=liveEl()/1000; const C=UI.live.coach; if(C&&C.ready&&C.finish&&VOICE.on) say(C.finish); if(sec>30) w.fact.time=fmtT(sec); stopLive(); UI.live=null; save(); UI.stack.pop(); const t=topS(); if(t&&t.v==="workout"){ t.sub="fact"; } render(); toast(sec>30?"Время записано: "+fmtT(sec):"Тренировка короче 30 секунд — время не записано"); break; }
     case "delShot": { const w=curW(); w.fact.shots.splice(+d.i,1); save(); renderOv(); toast("Скрин удалён"); break; }
     case "zoomShot": el.closest("figure").classList.toggle("zoom"); break;
     case "aiFact": { const w=curW(); const blobs=[]; for(const s of w.fact.shots.slice(0,CAP.imgMax)){ const src=imgSrc(s); if(!src) continue; try{ blobs.push(await srcToBlob(src)); }catch(err){} }
