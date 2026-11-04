@@ -590,14 +590,14 @@ async function authAct(kind){
   AUTH.busy=false; render();
 }
 const LOCKUP = w => `<svg class="lockup" width="${w}" viewBox="0 0 1231 1420" role="img" aria-label="M.SPORT"><path fill="#fff" fill-rule="evenodd" d="M1.6 1.3H409L615.4 620.5 821.8 1.3h407.5v688.9H921.6l.1-188.3-198.9 571.6H481.3L280.4 505.2v568.3H1.6Z"/><rect x="921.6" y="765.8" width="307.7" height="307.7" fill="var(--logo-red)"/><text x="0" y="1395" font-size="300" textLength="1231" lengthAdjust="spacingAndGlyphs">M.SPORT</text></svg>`;
-const HV = () => { try{ return localStorage.getItem("m.hv")||"a"; }catch(e){ return "a"; } };
+const HV = () => "b";
 const TRACK = `<svg class="deco" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="#fff" stroke-opacity=".13" stroke-width="10"><ellipse cx="200" cy="330" rx="330" ry="210"/><ellipse cx="200" cy="330" rx="290" ry="175"/><ellipse cx="200" cy="330" rx="250" ry="140"/><ellipse cx="200" cy="330" rx="210" ry="105"/></g><g stroke="#fff" stroke-opacity=".22" stroke-width="3" stroke-dasharray="2 16"><ellipse cx="200" cy="330" rx="270" ry="157" fill="none"/></g></svg>`;
 const RAYS = `<svg class="deco" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><defs><radialGradient id="hvg" cx=".5" cy=".42" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><rect width="400" height="300" fill="url(#hvg)"/><g fill="#fff" fill-opacity=".07">${Array.from({length:9},(_,i)=>`<rect x="-40" y="${i*44-60}" width="520" height="14" transform="rotate(-22 200 150)"/>`).join("")}</g></svg>`;
 function authTop(){ const v=HV();
-  if(v==="b") return `<div class="auth-top hv-b" data-act="hvNext">${LOCKUP(180)}</div>`;
-  if(v==="c") return `<div class="auth-top hv-c" data-act="hvNext">${TRACK}${LOCKUP(130)}</div>`;
-  if(v==="d") return `<div class="auth-top hv-d" data-act="hvNext">${RAYS}${LOCKUP(170)}</div>`;
-  return `<div class="auth-top" data-act="hvNext">${LOCKUP(110)}</div>`; }
+  if(v==="b") return `<div class="auth-top hv-b">${LOCKUP(180)}</div>`;
+  if(v==="c") return `<div class="auth-top hv-c">${TRACK}${LOCKUP(130)}</div>`;
+  if(v==="d") return `<div class="auth-top hv-d">${RAYS}${LOCKUP(170)}</div>`;
+  return `<div class="auth-top">${LOCKUP(110)}</div>`; }
 const splashHtml = () => `<div class="splash" role="status" aria-label="Загрузка M.SPORT">${LOCKUP(150)}<span class="spin" style="margin-top:8px"></span></div>`;
 function vLogin(){ const reg=AUTH.tab==="register";
   return `<main class="auth">${authTop()}<div class="auth-body">
