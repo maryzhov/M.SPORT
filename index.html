@@ -44,7 +44,8 @@ html:root.t-light{
   --c-run:#0a9f91; --c-rest:#8aa0a1; --logo-bg:#1fb3a3; --logo-pad:.16em .2em .14em; color-scheme:light;}
 
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body{height:100%;overflow-x:hidden}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--f-body);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
@@ -73,11 +74,11 @@ h2{font:600 17px/1.2 var(--f-body);margin:0}
 .iconbtn.sm{width:32px;height:32px;border-radius:9px}
 svg.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .iconbtn.sm svg.ic{width:18px;height:18px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.card{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
 .card.tap{cursor:pointer;transition:border-color .15s;text-align:left;width:100%}
 .card.tap:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .tile-ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
 .chev{color:var(--muted);display:inline-flex}
 .week{display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px}
@@ -126,12 +127,14 @@ svg.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;str
 .check svg{width:14px;height:14px;stroke:currentColor;stroke-width:3;fill:none}
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .field label,.flabel{font-size:13px;color:var(--muted)}
-.inp{height:44px;border-radius:11px;border:1px solid var(--line);background:var(--surface2);padding:0 12px;width:100%;min-width:0}
+.inp{height:44px;border-radius:11px;border:1px solid var(--line);background:var(--surface2);padding:0 12px;width:100%;min-width:0;max-width:100%;font-size:16px}
+input[type=date].inp,input[type=time].inp{-webkit-appearance:none;appearance:none;display:block;line-height:42px;text-align:left}
+input[type=date].inp::-webkit-date-and-time-value{text-align:left}
 textarea.inp{height:auto;min-height:76px;padding:10px 12px;resize:vertical}
 select.inp{appearance:auto}
 .inp:focus{outline:none;border-color:var(--accent)}
-.kv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.kv3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.kv3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 input[type=range]{width:100%;accent-color:var(--accent)}
 .stat b{display:block;font:600 19px var(--f-num)}
 .stat span{font-size:12px;color:var(--muted)}
