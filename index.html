@@ -645,8 +645,7 @@ function vLogin(){ const reg=AUTH.tab==="register";
   <div class="card col" style="gap:10px;text-align:center"><div class="small muted" style="line-height:1.6">Привет!<br>Спасибо, что выбрали M.SPORT!<br>Тренировки, цели, питание, вес и музыка — всё в одном месте.<br>Нам важно ваше мнение: пишите идеи и пожелания, и мы будем делать приложение удобнее.</div><button class="small" style="color:var(--accent);padding:4px 0" data-act="push" data-v="contact">Написать нам</button></div>
   <button class="small" style="color:var(--muted);padding:4px 0;text-decoration:underline" data-act="betaShow">Как пользоваться тестовой версией</button></div>${betaSeen()?"":betaModal()}</main>`; }
 const betaSeen = () => { try{ return localStorage.getItem("m.betaSeen")==="1"; }catch(e){ return !!UI.betaSeen; } };
-try{ const m=(location.hash||"").match(/^#bv-([abcd])$/); if(m){ localStorage.setItem("m.bv",m[1]); localStorage.removeItem("m.betaSeen"); } }catch(e){}
-const BV = () => { try{ return localStorage.getItem("m.bv")||"a"; }catch(e){ return "a"; } };
+const BV = () => "a";
 const BETA_STEPS = [
   ["Включи VPN","Пока сайт открывается только с ним.","🛡"],
   ["Зарегистрируйся","По почте — у тебя будет личный кабинет, данные будут видны на всех твоих устройствах.","✉"],
@@ -860,13 +859,15 @@ function stTile(st){ const on=MUS.kind==="radio"&&MUS.cur&&MUS.cur.id===st.id, s
   const k=[...st.id].reduce((h,ch)=>(h*31+ch.charCodeAt(0))%360,7), rot=(k%60)-30;
   return `<div class="st ${on?"on":""}"><button class="st-cover" style="background:linear-gradient(${135+rot}deg,${c[0]},${c[1]});filter:hue-rotate(${(k%40)-20}deg)" data-act="radio" data-id="${esc(st.id)}" aria-label="${on&&UI.playing?"Пауза":"Играть"}: ${esc(st.n)}"><span class="st-lbl">${esc(st.n)}</span><span class="st-ic">${stt==="load"&&on?'<span class="spin" style="border-color:#fff;border-right-color:transparent"></span>':ic(on&&UI.playing?"pause":"play")}</span>${on&&UI.playing?'<span class="eq on" style="position:absolute;left:10px;bottom:10px"><i style="background:#fff"></i><i style="background:#fff"></i><i style="background:#fff"></i></span>':""}</button>
   <div class="st-meta"><div class="st-n">${esc(st.n)}</div>${st.mine?`<button class="st-fav" data-act="delStation" data-id="${esc(st.id)}" aria-label="Удалить станцию">${ic("trash")}</button>`:`<button class="st-fav" data-act="favStation" data-id="${esc(st.id)}" aria-label="${fav?"Убрать из моих":"В мои станции"}" style="color:${fav?"var(--warn)":"var(--muted)"}">${fav?"★":"☆"}</button>`}</div>${stt==="fail"?'<div class="small" style="color:var(--bad)">Не играет</div>':""}</div>`; }
+function stLine(st){ const on=MUS.kind==="radio"&&MUS.cur&&MUS.cur.id===st.id, stt=MUS.status[st.id], fav=favIds().includes(st.id);
+  return `<div class="li"><button class="row grow" style="text-align:left;gap:12px" data-act="radio" data-id="${esc(st.id)}"><span class="tile-ic" style="${on?"background:var(--brand);color:var(--brand-ink)":""}">${stt==="load"&&on?'<span class="spin"></span>':ic(on&&UI.playing?"pause":"play")}</span><span class="grow" style="min-width:0"><b style="font-weight:600;display:block">${esc(st.n)}</b><span class="small ${stt==="fail"?"":"muted"}" style="${stt==="fail"?"color:var(--bad)":""}">${stt==="fail"?"Сейчас не играет":on&&UI.playing?"Играет":esc(st.g||st.src)}</span></span></button>${st.mine?`<button class="iconbtn sm" style="color:var(--muted)" data-act="delStation" data-id="${esc(st.id)}" aria-label="Удалить станцию">${ic("trash")}</button>`:`<button class="iconbtn sm" data-act="favStation" data-id="${esc(st.id)}" aria-label="${fav?"Убрать из моих":"В мои станции"}" style="color:${fav?"var(--brand)":"var(--muted)"};font-size:19px">${fav?"★":"☆"}</button>`}</div>`; }
 function vMusic(){
   const g=UI.rg||"Хип-хоп и рэп", favs=stations().filter(x=>favIds().includes(x.id)||x.mine);
   return `${ovHead("Музыка")}
   ${CAN_STREAM?`<div class="col" style="gap:10px"><div class="row between"><h2>Мои станции</h2>${UI.playing&&MUS.kind==="radio"?`<button class="btn sec sm" data-act="stopAudio">${ic("stop")}Стоп</button>`:""}</div>
-    ${favs.length?`<div class="st-row">${favs.map(stTile).join("")}</div>`:'<div class="small muted">Нажми ☆ у станции в каталоге, и она появится здесь.</div>'}</div>
+    <div class="card" style="padding:4px 14px">${favs.length?`<div class="list">${favs.map(stLine).join("")}</div>`:'<div class="li small muted">Нажми ☆ у станции в каталоге, и она появится здесь.</div>'}</div></div>
   <div class="col" style="gap:10px"><h2>Каталог радио</h2><div class="st-tabs">${RADIO_CAT.map(([x])=>`<button class="chip xs ${g===x?"on":""}" data-act="rg" data-g="${esc(x)}">${esc(x)}</button>`).join("")}</div>
-    <div class="st-grid">${RADIO.filter(x=>x.g===g).map(stTile).join("")}</div>
+    <div class="card" style="padding:4px 14px"><div class="list">${RADIO.filter(x=>x.g===g).map(stLine).join("")}</div></div>
     <details><summary class="small" style="color:var(--accent);cursor:pointer">+ Своя станция по ссылке на поток</summary><div class="col" style="margin-top:10px;gap:8px"><input class="inp" id="st-n" placeholder="Название, например «Мой рэп»"><input class="inp" id="st-u" inputmode="url" autocapitalize="off" placeholder="https://…/stream.mp3"><button class="btn sec sm" data-act="addStation">Добавить</button></div></details></div>
   ${ymCard()}`:`<div class="note">Радио и Яндекс Музыка играют в веб-версии M.SPORT на сайте.</div>`}
   <div class="card"><h2 style="margin-bottom:6px">Мои треки</h2>
