@@ -540,12 +540,14 @@ function initFirebase(){
 }
 async function authAct(kind){
   const v=id=>($("#"+id)?$("#"+id).value:"").trim();
+  const name=v("au-name"), email=v("au-email").toLowerCase(), pass=$("#au-pass")?$("#au-pass").value:"";
+  AUTH.f={name,email};
   const fa=firebase.auth(); AUTH.err=""; AUTH.info="";
   try{
-    if(kind==="login"){ AUTH.busy=true; render(); await fa.signInWithEmailAndPassword(v("au-email"),$("#au-pass").value); }
-    else if(kind==="register"){ const name=v("au-name"); if(!name){ AUTH.err="Как тебя зовут?"; render(); return; } AUTH.pendingName=name; AUTH.busy=true; render();
-      const cr=await fa.createUserWithEmailAndPassword(v("au-email"),$("#au-pass").value); try{ await cr.user.updateProfile({displayName:name}); }catch(e){} if(S){ S.profile.name=name; save(); render(); } }
-    else if(kind==="reset"){ const em=v("au-email"); if(!em){ AUTH.err="Впиши почту, на неё придёт ссылка"; render(); return; } await fa.sendPasswordResetEmail(em); AUTH.info="Ссылка для смены пароля отправлена на "+em; }
+    if(kind==="login"){ if(!email||!pass){ AUTH.err="Введи почту и пароль"; render(); return; } AUTH.busy=true; render(); await fa.signInWithEmailAndPassword(email,pass); }
+    else if(kind==="register"){ if(!name){ AUTH.err="Как тебя зовут?"; render(); return; } AUTH.pendingName=name; AUTH.busy=true; render();
+      const cr=await fa.createUserWithEmailAndPassword(email,pass); try{ await cr.user.updateProfile({displayName:name}); }catch(e){} if(S){ S.profile.name=name; save(); render(); } }
+    else if(kind==="reset"){ const em=email; if(!em){ AUTH.err="Впиши почту, на неё придёт ссылка"; render(); return; } await fa.sendPasswordResetEmail(em); AUTH.info="Ссылка для смены пароля отправлена на "+em; }
   }catch(e){ AUTH.err=FB_ERR[e&&e.code]||("Ошибка: "+((e&&e.message)||"попробуй ещё раз")); }
   AUTH.busy=false; render();
 }
@@ -554,8 +556,8 @@ function vLogin(){ const reg=AUTH.tab==="register";
   <div style="text-align:center"><span class="logo" style="font-size:56px" aria-hidden="true">${LOGO_SVG}</span><h1 style="margin-top:16px">M.SPORT</h1><div class="muted" style="margin-top:6px">Тренировки, цели, питание и вес — в одном месте</div></div>
   <div class="seg"><button class="${!reg?"on":""}" data-act="authTab" data-t="login">Вход</button><button class="${reg?"on":""}" data-act="authTab" data-t="register">Регистрация</button></div>
   <form class="card col" id="authForm" novalidate>
-    ${reg?`<div class="field"><label for="au-name">Имя</label><input class="inp" id="au-name" autocomplete="given-name" placeholder="Как к тебе обращаться"></div>`:""}
-    <div class="field"><label for="au-email">Почта</label><input class="inp" id="au-email" type="email" autocomplete="email" inputmode="email" placeholder="name@mail.ru"></div>
+    ${reg?`<div class="field"><label for="au-name">Имя</label><input class="inp" id="au-name" autocomplete="given-name" placeholder="Как к тебе обращаться" value="${esc((AUTH.f||{}).name||"")}"></div>`:""}
+    <div class="field"><label for="au-email">Почта</label><input class="inp" id="au-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.ru" value="${esc((AUTH.f||{}).email||"")}"></div>
     <div class="field"><label for="au-pass">Пароль</label><input class="inp" id="au-pass" type="password" autocomplete="${reg?"new-password":"current-password"}" placeholder="${reg?"Минимум 6 символов":""}"></div>
     ${AUTH.err?`<div class="small" style="color:var(--bad)" role="alert">${esc(AUTH.err)}</div>`:""}${AUTH.info?`<div class="small" style="color:var(--good)" role="status">${esc(AUTH.info)}</div>`:""}
     <button class="btn pri" type="submit" ${AUTH.busy?"disabled":""}>${AUTH.busy?'<span class="spin" style="border-color:var(--accent-ink);border-right-color:transparent"></span>':""}${reg?"Создать аккаунт":"Войти"}</button>
