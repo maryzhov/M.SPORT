@@ -531,6 +531,7 @@ const FB_ERR = {"auth/invalid-email":"Неверный формат почты",
 function initFirebase(){
   try{ firebase.initializeApp(window.FIREBASE_CONFIG); }catch(e){}
   const fa=firebase.auth(), fs=firebase.firestore();
+  try{ fa.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
   fa.onAuthStateChanged(async u=>{
     AUTH.user=u; AUTH.ready=true; if(u) AUTH.f={}; SYNC.hash={}; CAP.remote=null; UI.stack=[];
     if(!u){ S=null; KEY_CUR=KEY; render(); return; }
@@ -547,6 +548,7 @@ async function authAct(kind){
   const name=v("au-name"), email=v("au-email").toLowerCase(), pass=$("#au-pass")?$("#au-pass").value:"";
   AUTH.f={name,email,pass};
   const fa=firebase.auth(); AUTH.err=""; AUTH.info="";
+  try{ const rem=$("#au-rem")?$("#au-rem").checked:true; AUTH.rem=rem; await fa.setPersistence(rem?firebase.auth.Auth.Persistence.LOCAL:firebase.auth.Auth.Persistence.SESSION); }catch(e){}
   try{
     if(kind==="login"){ if(!email||!pass){ AUTH.err="Введи почту и пароль"; render(); return; } AUTH.busy=true; render(); await fa.signInWithEmailAndPassword(email,pass); }
     else if(kind==="register"){ if(!name){ AUTH.err="Как тебя зовут?"; render(); return; } AUTH.pendingName=name; AUTH.busy=true; render();
@@ -559,10 +561,11 @@ function vLogin(){ const reg=AUTH.tab==="register";
   return `<main class="view" style="padding-top:max(40px,env(safe-area-inset-top,0px));min-height:100vh;justify-content:center">
   <div style="text-align:center"><span class="logo" style="font-size:56px" aria-hidden="true">${LOGO_SVG}</span><h1 style="margin-top:16px">M.SPORT</h1><div class="muted" style="margin-top:6px">Тренировки, цели, питание и вес — в одном месте</div></div>
   <div class="seg"><button class="${!reg?"on":""}" data-act="authTab" data-t="login">Вход</button><button class="${reg?"on":""}" data-act="authTab" data-t="register">Регистрация</button></div>
-  <form class="card col" id="authForm" novalidate>
+  <form class="card col" id="authForm" method="post" action="#" novalidate>
     ${reg?`<div class="field"><label for="au-name">Имя</label><input class="inp" id="au-name" autocomplete="given-name" placeholder="Как к тебе обращаться" value="${esc((AUTH.f||{}).name||"")}"></div>`:""}
-    <div class="field"><label for="au-email">Почта</label><input class="inp" id="au-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.ru" value="${esc((AUTH.f||{}).email||"")}"></div>
-    <div class="field"><label for="au-pass">Пароль</label><input class="inp" id="au-pass" type="password" autocomplete="${reg?"new-password":"current-password"}" placeholder="${reg?"Минимум 6 символов":""}" value="${esc((AUTH.f||{}).pass||"")}"></div>
+    <div class="field"><label for="au-email">Почта</label><input class="inp" id="au-email" name="email" type="email" autocomplete="${reg?"email":"username"}" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.ru" value="${esc((AUTH.f||{}).email||"")}"></div>
+    <div class="field"><label for="au-pass">Пароль</label><input class="inp" id="au-pass" name="password" type="password" autocomplete="${reg?"new-password":"current-password"}" placeholder="${reg?"Минимум 6 символов":""}" value="${esc((AUTH.f||{}).pass||"")}"></div>
+    <label class="row small" style="gap:8px"><input type="checkbox" id="au-rem" ${AUTH.rem===false?"":"checked"}>Запомнить меня на этом устройстве</label>
     ${AUTH.err?`<div class="small" style="color:var(--bad)" role="alert">${esc(AUTH.err)}</div>`:""}${AUTH.info?`<div class="small" style="color:var(--good)" role="status">${esc(AUTH.info)}</div>`:""}
     <button class="btn pri" type="submit" ${AUTH.busy?"disabled":""}>${AUTH.busy?'<span class="spin" style="border-color:var(--accent-ink);border-right-color:transparent"></span>':""}${reg?"Создать аккаунт":"Войти"}</button>
     ${reg?"":`<button class="small" type="button" style="color:var(--accent);padding:6px 0" data-act="authReset">Забыли пароль?</button>`}
