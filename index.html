@@ -935,7 +935,7 @@ function vWorkout(top){
     <div class="card col"><h2>Сон</h2>
       <div class="kv"><div class="field"><label for="f-after-sleep">Часов</label>${inp("after.sleep",A.sleep,"7:30")}</div><div class="field"><label for="f-after-feel">Самочувствие сейчас</label>${inp("after.feel",A.feel,"Ровно")}</div></div>
       <div><div class="flabel" style="margin-bottom:8px">Качество сна</div>${chipSet("after.sleepQ",[["1","Плохое"],["2","Среднее"],["3","Хорошее"]],A.sleepQ)}</div></div>
-    ${CAP.sample?`<div class="card col"><div class="row" style="gap:8px"><span class="tile-ic">${ic("spark")}</span><b>Разбор от ИИ-тренера</b></div>${A.coach?`<div style="line-height:1.5;white-space:pre-wrap">${esc(A.coach)}</div>`:`<div class="small muted">Заполни факт и самочувствие — тренер разберёт тренировку и подскажет, что поменять дальше.</div>`}<button class="btn ai" data-act="coachReview" ${UI.ai.busy?"disabled":""}>${ic("spark")}${A.coach?"Разобрать заново":"Разобрать тренировку"}</button>${aiLine()}</div>`:""}
+    ${COACH_ON&&CAP.sample?`<div class="card col"><div class="row" style="gap:8px"><span class="tile-ic">${ic("spark")}</span><b>Разбор от ИИ-тренера</b></div>${A.coach?`<div style="line-height:1.5;white-space:pre-wrap">${esc(A.coach)}</div>`:`<div class="small muted">Заполни факт и самочувствие — тренер разберёт тренировку и подскажет, что поменять дальше.</div>`}<button class="btn ai" data-act="coachReview" ${UI.ai.busy?"disabled":""}>${ic("spark")}${A.coach?"Разобрать заново":"Разобрать тренировку"}</button>${aiLine()}</div>`:""}
     <button class="btn pri" data-act="finish">${ic("check")}${w.done?"Сохранить":"Сохранить и отметить выполненной"}</button>`;
   }
   return `${ovHead(esc(wTitle(w)),`<button class="iconbtn" data-act="delW" aria-label="Удалить тренировку">${ic("trash")}</button>`)}
@@ -948,6 +948,7 @@ let liveTimer=null, wakeLock=null;
 function liveTick(){ const el=$("#liveT"); if(el) el.textContent=fmtT(liveEl()/1000); coachTick(); }
 /* ===== voice ===== */
 const VOICE = { on:true };
+const COACH_ON = false; // ИИ-тренер выключен по решению Максима
 function say(text,lang){ try{ if(!("speechSynthesis" in window)||!text) return; const u=new SpeechSynthesisUtterance(text); u.lang=lang||"ru-RU"; u.rate=lang&&lang.startsWith("en")?0.95:1.02;
   const vs=speechSynthesis.getVoices(); const v=vs.find(x=>x.lang&&x.lang.replace("_","-").toLowerCase().startsWith((lang||"ru-RU").slice(0,2).toLowerCase())); if(v) u.voice=v; speechSynthesis.speak(u); }catch(e){} }
 function sayQueue(arr,lang){ try{ speechSynthesis.cancel(); }catch(e){} arr.forEach(t=>say(t,lang)); }
@@ -992,7 +993,7 @@ function vLive(){
   <div class="card live-stage">${stg.length?`<div class="eyebrow">Этап ${L.si+1} из ${stg.length}</div><div style="font:700 24px var(--f-body);margin:8px 0 4px">${esc(cur.n)}</div><div class="muted">${esc(cur.s)}</div>`:`<div class="muted">Этапы не заданы — просто беги.</div>`}</div>
   <button class="bigplay" data-act="liveToggle" aria-label="${L.running?"Пауза":"Старт"}">${ic(L.running?"pause":"play")}</button>
   ${stg.length>1?`<div class="grid2"><button class="btn sec" data-act="liveStage" data-n="-1" ${L.si===0?"disabled":""}>${ic("prev")}Предыдущий</button><button class="btn sec" data-act="liveStage" data-n="1" ${L.si>=stg.length-1?"disabled":""}>Следующий${ic("next")}</button></div>`:""}
-  ${CAP.sample?`<div class="card col" style="gap:10px"><div class="row between"><div class="row" style="gap:8px"><span class="tile-ic">${ic("spark")}</span><b>ИИ-тренер</b></div>${tgl(VOICE.on,"coachVoice",'aria-label="Голос тренера"')}</div>
+  ${COACH_ON&&CAP.sample?`<div class="card col" style="gap:10px"><div class="row between"><div class="row" style="gap:8px"><span class="tile-ic">${ic("spark")}</span><b>ИИ-тренер</b></div>${tgl(VOICE.on,"coachVoice",'aria-label="Голос тренера"')}</div>
     ${L.coach?`<div id="coachMsg" style="line-height:1.45">${L.coach.msg?esc(L.coach.msg):L.coach.fail?'<span class="muted">Тренер не ответил. Попробуй «Спросить тренера».</span>':'<span class="spin"></span>'}</div>
     <div class="grid2"><button class="btn sec sm" style="width:100%" data-act="coachAsk">${ic("chat")}Спросить тренера</button><button class="btn sec sm" style="width:100%" data-act="coachRepeat">Повторить</button></div>
     <div class="small muted">Подсказки голосом каждые ${S.coachEvery||5} мин и на смене этапа. Надень наушники.</div>`
