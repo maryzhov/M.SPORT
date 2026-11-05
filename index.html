@@ -66,6 +66,11 @@ h1{font:700 24px/1.15 var(--f-body);margin:0;text-wrap:balance}
 h2{font:600 17px/1.2 var(--f-body);margin:0}
 .eyebrow{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.thsw{position:relative;width:96px;height:44px;border-radius:22px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;flex:none;touch-action:pan-y;padding:0}
+.thsw .thk{position:absolute;top:3px;left:3px;width:44px;height:36px;border-radius:18px;background:var(--brand);transition:transform .22s ease;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.thsw.lt .thk{transform:translateX(46px)}
+.thsw .thi{position:relative;z-index:1;width:44px;display:grid;place-items:center;color:var(--muted);transition:color .22s}
+.thsw .thi:nth-child(2){color:var(--brand-ink)} .thsw.lt .thi:nth-child(2){color:var(--muted)} .thsw.lt .thi:nth-child(3){color:var(--brand-ink)}
 .logo{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--brand);color:#fff;flex:none}
 .logo.sm{width:40px;height:40px;border-radius:11px}
 .logo svg{width:58%;height:auto;display:block}
@@ -531,6 +536,10 @@ const UI = { tab:"home", day:TODAY, weekOf:monday(TODAY), trainSeg:"week", calMo
 const CAP = { remote:null, uid:null, sample:null, sampleImages:false, imgMax:1, assets:null };
 const SYNC = { state:"local", hash:{}, timer:null, err:"" };
 
+const isDark=()=>{ const t=S&&S.settings.theme; return t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches); };
+const SUN='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const MOON='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+function setThemeAnim(light){ const b=document.getElementById("thsw"); if(b) b.classList.toggle("lt",light); setTimeout(()=>{ S.settings.theme=light?"light":"dark"; save(); render(); },230); }
 function applyTheme(){ const r=document.documentElement; if(!S) return; r.classList.toggle("t-dark",S.settings.theme==="dark"); r.classList.toggle("t-light",S.settings.theme==="light");
   const a=S.settings.accent; if(a){ r.style.setProperty("--accent",a); r.style.setProperty("--accent-ink","#08191b"); r.style.setProperty("--accent-soft",a+"22"); r.style.setProperty("--c-run",a); }
   else ["--accent","--accent-ink","--accent-soft","--c-run"].forEach(p=>r.style.removeProperty(p)); }
@@ -1358,7 +1367,7 @@ function vProfile(){ const s=S.settings, pr=S.profile, N=S.notify, demo=S.workou
     <div class="kv3"><div class="field"><label for="pf-height">Рост, см</label><input class="inp" id="pf-height" data-pf="height" inputmode="numeric" value="${esc(pr.height)}"></div><div class="field"><label for="pf-tw">Цель, кг</label><input class="inp" id="pf-tw" data-pf="targetW" inputmode="decimal" value="${esc(pr.targetW)}"></div><div class="field"><label for="pf-twd">К дате</label><input class="inp" type="date" id="pf-twd" data-pf="targetWDate" value="${esc(pr.targetWDate)}"></div></div>
     <div class="field"><label for="pf-mk">Цель бега в месяц, км</label><input class="inp" id="pf-mk" data-pf="monthKm" inputmode="numeric" value="${esc(pr.monthKm||"")}" placeholder="авто: ${monthGoal()}"></div>
     <div class="small muted">Рост и вес нужны для расчёта расхода калорий.</div></div>
-  <div class="card col"><h2>Внешний вид</h2><div class="seg"><button class="${s.theme==="dark"?"on":""}" data-act="theme" data-v="dark">Тёмная</button><button class="${s.theme==="light"?"on":""}" data-act="theme" data-v="light">Светлая</button><button class="${s.theme==="auto"?"on":""}" data-act="theme" data-v="auto">Системная</button></div></div>
+  <div class="card row between"><div><h2>Тема</h2><div class="small muted" style="margin-top:2px">${isDark()?"Тёмная":"Светлая"} · свайпни или нажми</div></div><button class="thsw ${isDark()?"":"lt"}" id="thsw" data-act="themeTgl" role="switch" aria-checked="${isDark()?"false":"true"}" aria-label="Светлая тема"><span class="thk"></span><span class="thi">${MOON}</span><span class="thi">${SUN}</span></button></div>
   <div class="card"><h2>Что веду</h2><div class="list" style="margin-top:6px">${[["train","Тренировки"],["food","Питание и вода"],["weight","Вес"]].map(([k,l])=>`<div class="li"><span class="grow">${l}</span>${tgl(s.focus[k],"focus",`data-k="${k}" aria-label="${l}"`)}</div>`).join("")}</div><div class="small muted" style="margin-top:6px">Выключенное убирается с Главной, но остаётся доступным в меню.</div></div>
   <div class="card"><div class="row between" style="align-items:baseline"><h2>Уведомления</h2><span class="small muted">в разработке</span></div><div class="small muted" style="margin-top:2px">Выбери, что хочешь получать, — включим, как только будут готовы.</div><div class="list" style="margin-top:6px">${nt.map(([k,l])=>`<div class="li"><span class="grow">${l}</span>${tgl(N[k],"ntf",`data-k="${k}" aria-label="${l}"`)}</div>`).join("")}
     <div class="li"><span class="grow">Утреннее время</span><input class="inp" style="width:110px;height:38px" type="time" data-ntf="morning" value="${N.morning}" aria-label="Утреннее время"></div>
@@ -1509,6 +1518,7 @@ async function onAct(el,e){
     case "nextT": playTrack(UI.ti+1); break;
     case "prevT": playTrack(UI.ti-1); break;
     case "theme": S.settings.theme=d.v; save(); render(); break;
+    case "themeTgl": if(Date.now()-(window.__thSwipe||0)<400) break; setThemeAnim(isDark()); break;
     case "accent": S.settings.accent=d.v; save(); render(); break;
     case "nav": S.settings.nav=d.v; save(); render(); toast("Меню: вариант "+d.v); break;
     case "ntf": S.notify[d.k]=!S.notify[d.k]; save(); render(); break;
@@ -1572,6 +1582,8 @@ async function aiFood(text,blob){
     aiBusy(false); if(!arr.length) toast("ИИ не нашёл еду — опиши текстом");
   }catch(err){ aiFail(err); } }
 
+(()=>{ let x0=null; document.addEventListener("touchstart",e=>{ const b=e.target.closest&&e.target.closest("#thsw"); x0=b?e.touches[0].clientX:null; },{passive:true});
+  document.addEventListener("touchend",e=>{ if(x0==null) return; const dx=e.changedTouches[0].clientX-x0; x0=null; if(Math.abs(dx)<18) return; window.__thSwipe=Date.now(); const light=dx>0; if(light!==!isDark()) setThemeAnim(light); },{passive:true}); })();
 document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); if(!el||el.disabled) return; if(el.tagName==="INPUT") return; onAct(el,e).catch(err=>{ console.error(err); toast("Что-то пошло не так"); }); });
 document.addEventListener("submit",e=>{ if(e.target.id==="authForm"){ e.preventDefault(); authAct(AUTH.tab==="register"?"register":"login"); } });
 document.addEventListener("keydown",e=>{ if((e.key==="Enter"||e.key===" ")&&e.target.matches('[role="button"][data-act]')){ e.preventDefault(); e.target.click(); } });
