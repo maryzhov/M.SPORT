@@ -843,11 +843,21 @@ const stations = () => RADIO.concat((S.music&&S.music.stations)||[]);
 const MUS = { cur:null, kind:"", status:{} }; // kind: radio|track
 function ensureAudio(){ if(AUDIO) return AUDIO; AUDIO=new Audio(); AUDIO.preload="none";
   AUDIO.addEventListener("ended",()=>{ if(MUS.kind==="track") playTrack(UI.ti+1); });
-  AUDIO.addEventListener("playing",()=>{ UI.playing=true; if(MUS.kind==="radio"&&MUS.cur) MUS.status[MUS.cur.id]="ok"; render(); });
+  AUDIO.addEventListener("playing",()=>{ UI.playing=true; if(MUS.kind==="radio"&&MUS.cur) MUS.status[MUS.cur.id]="ok"; setMS(); render(); });
   AUDIO.addEventListener("pause",()=>{ UI.playing=false; render(); });
   AUDIO.addEventListener("error",()=>{ if(MUS.kind!=="radio"||!MUS.cur) return; MUS.ui=(MUS.ui||0)+1; const u=MUS.cur.urls[MUS.ui];
     if(u){ AUDIO.src=u; AUDIO.play().catch(()=>{}); } else { MUS.status[MUS.cur.id]="fail"; UI.playing=false; toast("«"+MUS.cur.n+"» сейчас не играет — попробуй другую станцию"); render(); } });
   return AUDIO; }
+function msList(){ const f=stations().filter(x=>favIds().includes(x.id)||x.mine); return f.length?f:RADIO; }
+function msStep(k){ if(MUS.kind==="track") return playTrack(UI.ti+k); const L=msList(); if(!L.length) return; let i=L.findIndex(x=>MUS.cur&&x.id===MUS.cur.id); playRadio(L[(i+k+L.length)%L.length]); }
+function setMS(){ try{ const ms=navigator.mediaSession; if(!ms) return; const tr=UI.tracks[UI.ti], radio=MUS.kind==="radio"&&MUS.cur;
+  const icon=new URL("icon-512.png",location.href).href;
+  ms.metadata=new MediaMetadata({ title: radio?MUS.cur.n:(tr?tr.name:"M.SPORT"), artist: radio?"M.SPORT · радио":"M.SPORT · мои треки", album:"M.SPORT", artwork:[{src:icon,sizes:"512x512",type:"image/png"}] });
+  ms.setActionHandler("play",()=>{ if(MUS.kind==="radio"&&MUS.cur) playRadio(MUS.cur); else AUDIO&&AUDIO.play().catch(()=>{}); });
+  ms.setActionHandler("pause",()=>{ AUDIO&&AUDIO.pause(); });
+  ms.setActionHandler("nexttrack",()=>msStep(1)); ms.setActionHandler("previoustrack",()=>msStep(-1));
+  ["seekbackward","seekforward","seekto"].forEach(k=>{ try{ ms.setActionHandler(k,null); }catch(e){} });
+}catch(e){} }
 function playRadio(st){ const a=ensureAudio(); MUS.cur=st; MUS.kind="radio"; MUS.ui=0; MUS.status[st.id]="load"; a.src=st.urls[0]; a.play().catch(()=>{}); render(); }
 function stopAudio(){ if(AUDIO){ AUDIO.pause(); } UI.playing=false; render(); }
 function player(){
