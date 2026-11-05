@@ -1033,6 +1033,7 @@ function vWorkout(top){
     <button class="btn pri" data-act="finish">${ic("check")}${w.done?"Сохранить":"Сохранить и отметить выполненной"}</button>`;
   }
   return `${ovHead(esc(wTitle(w)),`<button class="iconbtn" data-act="delW" aria-label="Удалить тренировку">${ic("trash")}</button>`)}
+  ${cycleNotice(w.date)}
   <div class="small muted" style="margin-top:-8px;padding-left:48px">${DFULL[dow(w.date)]}, ${human(w.date)}${w.done?" · выполнено":""}${w.demo?" · пример":""}</div>
   <div class="seg">${tabs.map(([k,l])=>`<button class="${sub===k?"on":""}" data-act="sub" data-s="${k}">${l}</button>`).join("")}</div>${b}`; }
 
@@ -1329,6 +1330,29 @@ function vPlanImport(){ const P0=UI.plan;
   ${P0.res?`<div class="card"><div class="row between"><h2>Найдено: ${P0.res.length}</h2><button class="small" style="color:var(--accent)" data-act="planAll">Выбрать все</button></div><div class="list" style="margin-top:6px">${P0.res.map((r,i)=>`<div class="li"><button class="check ${r.on?"on":""}" data-act="planPick" data-i="${i}" aria-label="Взять">${r.on?checkSvg:""}</button>${tIcon(r.type,32)}<div class="grow"><b style="font-weight:600">${DN[dow(r.date)]}, ${human(r.date)} · ${esc(r.title||tName(r.type))}</b><div class="small muted">${esc([r.km?r.km+" км":"",r.min?r.min+" мин":"",r.pace?r.pace+" /км":"",r.desc||""].filter(Boolean).join(" · "))}</div></div></div>`).join("")}</div></div>
     <button class="btn pri" data-act="planAdd">${ic("plus")}Добавить выбранные (${P0.res.filter(r=>r.on).length})</button>`:""}`; }
 
+/* ================= MENSTRUAL CYCLE ================= */
+function cycleInfo(date){
+  const p=S.profile||{}, start=p.periodStart;
+  if(p.gender!=="female"||!start) return null;
+  const len=Math.max(21,Math.min(45,+p.cycleLength||28)), period=Math.max(2,Math.min(10,+p.periodLength||5));
+  const days=Math.floor((parse(date)-parse(start))/86400000);
+  if(!Number.isFinite(days)||days<0) return null;
+  const day=(days%len)+1, phase=day<=period?"Менструация":day<=Math.round(len*.0+5)?"Начало цикла":day<=Math.round(len*.45)?"Фолликулярная фаза":day<=Math.round(len*.60)?"Овуляторное окно":"Лютеиновая фаза";
+  const inPeriod=day<=period;
+  return {day,len,period,phase,inPeriod,nextStart:addD(start,(Math.floor(days/len)+1)*len),dayInCycle:day};
+}
+function cycleNotice(date){
+  const c=cycleInfo(date); if(!c) return "";
+  const msg=c.inPeriod
+    ?"По твоим отметкам сейчас ожидается менструация. Ориентируйся на самочувствие: при усталости или боли можно снизить интенсивность, сократить объём или выбрать отдых."
+    :c.day<=7
+    ?"Начало цикла по твоим отметкам. Планируй нагрузку по самочувствию — универсальных ограничений нет."
+    :c.day>=Math.max(1,c.len-5)
+    ?"По календарю приближается следующий цикл. Если чувствуешь усталость или дискомфорт, оставь запас для восстановления."
+    :"";
+  return msg?'<div class="note" style="border-color:var(--warn);color:var(--fg);margin:8px 0"><b>Учитываем цикл · '+esc(c.phase)+'</b><div class="small" style="margin-top:4px">'+msg+'</div><div class="small muted" style="margin-top:4px">Прогноз календарный, не медицинская рекомендация. Цикл может сдвигаться.</div></div>':"";
+}
+
 /* ================= PROFILE ================= */
 const CONTACTS = { email:"maryzhov@gmail.com", telegram:"@maryzhov", max:"https://max.ru/u/f9LHodD0cOLvWb7f3OrsE0k3Lha3LThCIkm1aIszX90uWsTlq88-23Cn8cI" }; // заполнить: почта поддержки, @ник в Telegram, ссылка в Max
 const GUIDE_URL = "guide.pdf";
@@ -1374,6 +1398,7 @@ function vProfile(){ const s=S.settings, pr=S.profile, N=S.notify, demo=S.workou
   <div class="card row"><label for="avaFile" style="position:relative;cursor:pointer;flex:none" aria-label="Загрузить фото профиля">${pr.avatar?`<img src="${pr.avatar}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">`:`<span class="tile-ic" style="width:64px;height:64px;border-radius:50%;font:700 24px var(--f-num)">${esc((pr.name||"М")[0])}</span>`}<span style="position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;border:2px solid var(--surface)"><span style="transform:scale(.6);display:grid">${ic("camera")}</span></span></label><input type="file" id="avaFile" accept="image/*" hidden><div class="grow"><b style="font-size:18px">${esc(pr.name)}</b><div class="small muted">${age!=null?age+" лет · ":""}${S.goals.filter(g=>g.status!=="done").map(g=>esc(g.title.replace(/ — .*/,""))).join(" · ")}</div>${pr.avatar?`<button class="small muted" style="margin-top:4px" data-act="avaDel">Удалить фото</button>`:`<label for="avaFile" class="small" style="color:var(--accent);cursor:pointer;display:inline-block;margin-top:4px">Добавить фото</label>`}</div></div>
   <div class="card col"><h2>Личные данные</h2>
     <div class="kv"><div class="field"><label for="pf-name">Имя</label><input class="inp" id="pf-name" data-pf="name" value="${esc(pr.name)}"></div><div class="field"><label for="pf-birth">Дата рождения</label><input class="inp" type="date" id="pf-birth" data-pf="birth" value="${esc(pr.birth)}"></div></div>
+    <div class="field"><label for="pf-gender">Пол</label><select class="inp" id="pf-gender" data-pf="gender"><option value="" ${!pr.gender?"selected":""}>Не указан</option><option value="male" ${pr.gender==="male"?"selected":""}>Мужской</option><option value="female" ${pr.gender==="female"?"selected":""}>Женский</option></select></div>
     <div class="kv3"><div class="field"><label for="pf-height">Рост, см</label><input class="inp" id="pf-height" data-pf="height" inputmode="numeric" value="${esc(pr.height)}"></div><div class="field"><label for="pf-tw">Цель, кг</label><input class="inp" id="pf-tw" data-pf="targetW" inputmode="decimal" value="${esc(pr.targetW)}"></div><div class="field"><label for="pf-twd">К дате</label><input class="inp" type="date" id="pf-twd" data-pf="targetWDate" value="${esc(pr.targetWDate)}"></div></div>
     <div class="field"><label for="pf-mk">Цель бега в месяц, км</label><input class="inp" id="pf-mk" data-pf="monthKm" inputmode="numeric" value="${esc(pr.monthKm||"")}" placeholder="авто: ${monthGoal()}"></div>
     <div class="small muted">Рост и вес нужны для расчёта расхода калорий.</div></div>
